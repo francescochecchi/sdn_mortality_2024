@@ -39,7 +39,6 @@
     dir_path <- paste0(dirname(rstudioapi::getActiveDocumentContext()$path),"/")
     setwd(dir_path)
     dir_path <- gsub("/code", "", dir_path)
-    print(getwd() )
     
     # Initialise random numbers
     set.seed(123)
@@ -57,7 +56,7 @@
   ## Identify data file and read in parameters
     
     # Search for data file in the directory based on string pattern
-    filename <- list.files(paste0(dir_path, "in"), pattern = "list_data")[1]
+    filename <- list.files(paste0(dir_path, "in/"), pattern = "list_data")[1]
 
     # Read in parameters from Excel file
     pars <- read_excel(paste0(dir_path, "in/", filename), sheet = "parameters")
@@ -90,7 +89,7 @@
     
   #...................................      
   ## Source functions
-  source(paste(dir_path, "code/01_functions.R"), echo = T)
+  source(paste0(dir_path, "code/01_functions.R"), echo = T)
 
 #...............................................................................
 ### Preparing data for analysis

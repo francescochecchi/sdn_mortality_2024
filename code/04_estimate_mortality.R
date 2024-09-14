@@ -1,0 +1,29 @@
+#...............................................................................
+### +++++ CAPTURE-RECAPTURE ANALYSIS OF MORTALITY DATA - SUDAN (2024) ++++++ ###
+#...............................................................................
+
+#...............................................................................
+## ----- R SCRIPT TO PERFORM CAPTURE-RECAPTURE ESTIMATION OF MORTALITY  ----- ##
+#...............................................................................
+
+
+#...............................................................................
+### Reading inputs and managing the dataset
+#...............................................................................
+
+  #...................................      
+  ## Load additional packages needed for the Sudan analysis
+
+    
+    # Search for data file in the directory based on string pattern
+    filename <- list.files(paste0(dir_path, "in/"), pattern = "list_data")[1]
+
+    # Read in parameters from Excel file
+    pars <- read_excel(paste0(dir_path, "in/", filename), sheet = "parameters")
+    pars <- as.data.frame(pars)
+
+
+
+#...............................................................................
+### ENDS
+#...............................................................................

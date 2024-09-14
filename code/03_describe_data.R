@@ -8,7 +8,7 @@
 
 
 #...............................................................................
-### xxx
+### Preparing the dataset and tabulating attrition
 #...............................................................................
 
   #...................................      
@@ -23,8 +23,12 @@
     # Identify list names
     list_names <- data.frame(list = paste0("list", 1:3), 
       list_name = c("public survey", "private survey", "social media"),
-      list_colour = palette_gen[c(4, 8, 12)])
+      list_colour = palette_gen[c(3, 8, 13)])
     
+    # Start and end dates of study    
+    date_start <- as.Date(paste(2023, 4, 15, sep = "-"), "%Y-%m-%d")
+    date_end <- as.Date(paste(2024, 6, 4, sep = "-"), "%Y-%m-%d")
+
     # Manage cause of death and add exclusion criterion (not intentional injury)
     df[which(is.na(df$cod)), "cod"] <- "unknown / unclear"
     df$excl_cod <- ifelse(df$cod == "intentional injury", F, T)
@@ -238,18 +242,120 @@
 
     # Combine maps
     map_list <- lapply(grep("map", ls(), value = T), get)
-    ggarrange(plotlist = map_list, ncol = 3, labels = list_names$list_name,
-      font.label = list(face = "plain"))
-    ggsave(paste0(dir_ij, "map_lists_wide.png"), units = "cm", dpi = "print", 
-      height = 30, width = 90)
-    
+    ggarrange(plotlist = map_list, ncol = 2, nrow = 2, 
+      labels = list_names$list_name, font.label = list(size = 20), 
+      label.x = 0.35, label.y = 0.95)
+    ggsave(paste0(dir_ij, "map_lists.png"), units = "cm", dpi = "print", 
+      height = 45, width = 60)
+
   
+  #...................................      
+  ## Graph timeline of deaths per month, by list
+    
+    # Prepare data
+    long$date_month <- as.Date(paste(15, month(long$date_death), 
+      year(long$date_death), sep = "-"), format = "%d-%m-%Y")
+
+    # Set aside the number of missing
+    x <- which(is.na(long$date_month))
+    missing <- as.data.frame(matrix(NA, nrow = 1, ncol = 3))
+    missing[1, ]  <- as.numeric(table(long[x, "list_name"]))  
+    colnames(missing) <-list_names$list_name
+    
+    # Graph 
+    ggplot(long[-x, ], aes(x = date_month, group = list_name, colour =list_name, 
+      fill = list_name)) +
+      geom_bar(position = "dodge", stat = "count", alpha = 0.75) +
+      scale_y_continuous("number of deaths listed", expand = c(0, 0)) +
+      scale_x_date("date", breaks = "1 month", date_labels = "%b-%Y") +
+      theme_bw() +
+      scale_color_manual("list:", values = list_names$list_colour) +
+      scale_fill_manual("list:", values = list_names$list_colour) +
+      theme(legend.position = "top", panel.grid.major.x = element_blank()) +
+      theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1)) +
+      annotate("text", x = date_start + 70, y = 190, label = "missing dates:") +
+      annotation_custom(
+        tableGrob(missing, rows = NULL,
+          theme = ttheme_minimal(
+            core = list(fg_params = list(cex = 0.8)),
+            colhead = list(fg_params = list(cex = 0.8, fontface = "plain")))), 
+        xmin = date_start + 180, xmax = date_start + 270, ymin = 190, ymax =180)
+      
+    ggsave(paste0(dir_ij, "list_by_date.png"), units = "cm", dpi = "print", 
+      height = 12, width = 20)
 
 
+#...............................................................................
+### Describing the matched dataset
+#...............................................................................
+    
+  #...................................      
+  ## Graph timeline of deaths per month, by cause
+    
+    # Prepare data
+    df_desc$date_month <- as.Date(paste(15, month(df_desc$date_death), 
+      year(df_desc$date_death), sep = "-"), format = "%d-%m-%Y")
 
-
-
-
+    # Set aside the number of missing
+    x <- which(is.na(df_desc$date_month))
+    missing <- length(x)
+    
+    # Graph 
+    ggplot(df_desc[-x, ], aes(x = date_month, group = cod2, alpha = cod2)) +
+      geom_bar(position = "stack", stat = "count",
+        fill = palette_gen[10], colour = palette_gen[10]) +
+      scale_y_continuous("number of unique deaths", expand = c(0, 0)) +
+      scale_x_date("date", breaks = "1 month", date_labels = "%b-%Y") +
+      theme_bw() +
+      scale_alpha_manual("cause:", values = c(0.75, 0.25)) +
+      theme(legend.position = "top", 
+        axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1),
+        panel.grid.major.x = element_blank()) +
+      annotate("text", x = date_start + 70, y = 300, 
+        label = paste0("missing dates: n = ", missing))
+    ggsave(paste0(dir_ij, "cause_by_date.png"), units = "cm", dpi = "print", 
+      height = 12, width = 20)
+     
+    
+  #...................................      
+  ## Graph cause of death by region of Sudan
+    
+    # Prepare data
+    df_desc$loc_death3 <- df_desc$loc_death
+    x <- c("Central Darfur", "East Darfur", "North Darfur", "West Darfur",
+      "South Darfur")
+    df_desc[which(df_desc$loc_death3 %in% x), "loc_death3"] <- "Darfur states"
+    x <- c("West Kordofan", "North Kordofan", "South Kordofan")
+    df_desc[which(df_desc$loc_death3 %in% x), "loc_death3"] <- "Kordofan states"
+    x <- c("Gedaref", "Kassala", "Northern", "Red Sea", "River Nile",
+      "Sennar", "White Nile", "Blue Nile")
+    df_desc[which(df_desc$loc_death3 %in% x), "loc_death3"] <- "other states"
+    tab <- as.data.frame.matrix(
+      prop.table(table(df_desc$loc_death3, df_desc$cod, useNA = "ifany"), 1))
+    tab$loc <- rownames(tab)
+    tab <- reshape(tab, direction = "long", varying = unique(df_desc$cod),
+      idvar = "loc", timevar = "cod", times = unique(df_desc$cod), 
+      v.names = "prop")
+    tab$lab <- scales::percent(tab$prop, accuracy = 1)
+    x <- table(df_desc$loc_death3)
+    state_labs <- paste0(names(x), "\n (n = ", as.vector(x), ")")
+    
+    # Plot
+    ggplot(tab, aes(x = loc, y = prop, colour = cod, fill = cod)) +
+      geom_bar(position = "fill", stat = "identity", alpha = 0.75) +
+      geom_text(aes(label = lab), size = 3.5, colour = "black",
+        position = position_fill(vjust = 0.5)) +
+      theme_bw() +
+      theme(legend.position = "top", panel.grid.major.x = element_blank()) +
+      scale_x_discrete("state or grouping of states",
+        labels = state_labs) +
+      scale_y_continuous("percentage of all unique deaths", labels = percent,
+        breaks = seq(0, 1, 0.20), expand = c(0, 0)) +
+      scale_colour_manual("cause:", values=c(palette_gen[c(5,15,10)],"grey70"))+
+      scale_fill_manual("cause:", values=c(palette_gen[c(5,15,10)],"grey70"))
+    ggsave(paste0(dir_ij, "cause_by_region.png"), units = "cm", dpi = "print", 
+      height = 12, width = 20)
+    
 
 
 

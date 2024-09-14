@@ -18,6 +18,7 @@
     pacman::p_load(
       ggplot2,       # Data visualization
       ggpubr,        # Arranging multiple plots into a single plot
+      gridExtra,     # Add tables to plot areas
       gtools,        # Assist various programming tasks
       lubridate,     # Makes it easier to work with dates and times
       MASS,          # For various statistical functions
@@ -26,7 +27,7 @@
       scales,        # Scaling and formatting data for visualizations
       sf,            # Work with spatial data and produce maps
       tidyverse,     # Tidyverse suite of packages
-      viridis        # Colour palettes
+      viridis       # Colour palettes
     )
 
     # Install or load packages not on CRAN

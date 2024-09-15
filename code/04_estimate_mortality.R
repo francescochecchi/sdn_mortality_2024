@@ -146,10 +146,59 @@ for (dd in 1:5) {
   #...................................      
   ## Visualise differences among sensitivity estimates
   
+    # Prepare for graphing
+    out1 <- out[, c("dup_threshold", "ovrlp_threshold", 
+      grep("all_cause", colnames(out), value = T))]
+    out1$cod = "all cause"
+    colnames(out1) <- gsub("all_cause_", "", colnames(out1))
+    out2 <- out[, c("dup_threshold", "ovrlp_threshold", 
+      grep("intl_injury", colnames(out), value = T))]
+    out2$cod = "intentional injury"
+    colnames(out2) <- gsub("intl_injury_", "", colnames(out2))
+    df <- rbind(out1, out2)
+    df$dup_threshold <- paste0("duplication threshold >= ", df$dup_threshold)
+    df$ovrlp_threshold <- paste0(">=", df$ovrlp_threshold)
+    df$cod <- factor(df$cod, labels = c("all causes", "intentional injury"))
     
+    # Graph without 95%CIs
+    ggplot(df, aes(x = ovrlp_threshold, y = est, alpha = cod, group = cod,
+      colour = dup_threshold, fill = dup_threshold)) +
+      geom_point(size = 4) +
+      geom_line(linetype = "11", linewidth = 0.75) +
+#      geom_errorbar(aes(ymin = lci, ymax = uci)) +
+      theme_bw() +
+      scale_colour_viridis_d("duplication confidence threshold") +
+      scale_fill_viridis_d("match confidence threshold") +
+      scale_alpha_manual("cause of death", values = c(0.5, 1)) +
+      scale_y_continuous("estimated number of deaths", labels = comma_format(),
+        breaks = seq(0, 400000, 20000)) +
+      scale_x_discrete("match confidence threshold") +
+      facet_grid(cod~dup_threshold, scale = "free_y") +
+      theme(legend.position = "none")
+    ggsave(paste0(dir_path, "out/all_sens_noci.png"), units = "cm", dpi = "print", 
+      height = 15, width = 22)
     
+    # Graph without 95%CIs
+    ggplot(df, aes(x = ovrlp_threshold, y = est, alpha = cod, group = cod,
+      colour = dup_threshold, fill = dup_threshold)) +
+      geom_point(size = 4) +
+      geom_line(linetype = "11", linewidth = 0.75) +
+      geom_errorbar(aes(ymin = lci, ymax = uci)) +
+      theme_bw() +
+      scale_colour_viridis_d("duplication confidence threshold") +
+      scale_fill_viridis_d("match confidence threshold") +
+      scale_alpha_manual("cause of death", values = c(0.5, 1)) +
+      scale_y_continuous("estimated number of deaths", labels = comma_format(),
+        breaks = seq(0, 1000000, 50000)) +
+      scale_x_discrete("match confidence threshold") +
+      facet_grid(cod~dup_threshold, scale = "free_y") +
+      theme(legend.position = "none")
+    ggsave(paste0(dir_path, "out/all_sens_ci.png"), units = "cm", dpi = "print", 
+      height = 15, width = 22)
     
+      
     
+      
 #...............................................................................
 ### ENDS
 #...............................................................................

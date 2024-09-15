@@ -50,6 +50,7 @@
     dir_path <- paste0(dirname(rstudioapi::getActiveDocumentContext()$path),"/")
     setwd(dir_path)
     dir_path <- gsub("/code", "", dir_path)
+    suppressWarnings(dir.create(paste0(dir_path, "out")))
     
     # Initialise random numbers
     set.seed(123)

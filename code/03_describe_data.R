@@ -6,7 +6,14 @@
 ## ----------- R SCRIPT TO PRODUCE DESCRIPTIVE ANALYSES OF DATASET  --------- ##
 #...............................................................................
 
-
+# for each duplication and overlap score combination...
+for (dd in 1:5) {
+  print(paste0("now doing descriptive analysis for duplication threshold ", dd))  
+  
+  for (oo in 1:5) {
+    print(paste0("   ...and overlap threshold ", oo))  
+  
+    
 #...............................................................................
 ### Preparing the dataset and tabulating attrition
 #...............................................................................
@@ -15,10 +22,10 @@
   ## Read and prepare dataset
     
     # Which directory
-    dir_ij <- paste0(dir_path, "out/d3o3/")
+    dir_do <- paste0(dir_path, "out/d", dd, "o", oo, "/")
     
     # Read dataset arising from given duplication and overlap thresholds
-    df <- readRDS(paste0(dir_ij, "list_data.rds"))
+    df <- readRDS(paste0(dir_do, "list_data.rds"))
 
     # Identify list names
     list_names <- data.frame(list = paste0("list", 1:3), 
@@ -84,7 +91,7 @@
     tab$percentage <- percent(tab$percentage, accuracy = 0.1)
     
     # Save table
-    write.csv(tab, paste0(dir_ij, "attrition.csv"), row.names = F)    
+    write.csv(tab, paste0(dir_do, "attrition.csv"), row.names = F)    
 
     
 #...............................................................................
@@ -186,7 +193,7 @@
     tab <- rbind(tab, c("total observations", NA, table(long$list_name), NA))
     
     # Save table
-    write.csv(tab, paste0(dir_ij, "descriptive.csv"), row.names = F, na = "")   
+    write.csv(tab, paste0(dir_do, "descriptive.csv"), row.names = F, na = "")   
 
 
   #...................................      
@@ -204,23 +211,19 @@
     tab <- merge(sdn_boundaries, tab, by = "shapeName", all.x = T)
     for (i in list_names$list_name) {tab[which(is.na(tab[, i])), i] <- 0}
     
-    # Create labels
-    for (i in list_names$list_name) {
-      x <- unlist(sf::st_drop_geometry(tab[, i]))
-      tab[, paste0(i, "_lab")] <- paste0(tab$shapeName, "\n (n = ", x, ")")
-    }
-    
     # Map each list     
     for (i in list_names$list_name) {
       
       # prepare
-      x <- unlist(sf::st_drop_geometry(tab[, paste0(i, "_lab")]))
       tab$n_deaths <- unlist(sf::st_drop_geometry(tab[, i]))
+      
+      # create labels
+      tab$labs <- paste0(tab$shapeName, "\n (n = ", tab$n_deaths, ")")
       
       # map
       pl <- ggplot(tab) + 
         geom_sf(aes(fill = n_deaths)) + 
-        geom_sf_label(aes(label = x), size = 5, alpha = 0.70) +
+        geom_sf_label(aes(label = labs), size = 5, alpha = 0.50) +
         labs(x = "latitude", y = "longitude") +
         theme_bw() +
         theme(legend.position = "none", axis.text = element_text(size = 17),
@@ -238,11 +241,12 @@
     }
 
     # Combine maps
+    suppressWarnings(rm(map_list))
     map_list <- lapply(grep("map", ls(), value = T), get)
     ggarrange(plotlist = map_list, ncol = 2, nrow = 2, 
       labels = list_names$list_name, font.label = list(size = 20), 
       label.x = 0.35, label.y = 0.95)
-    ggsave(paste0(dir_ij, "map_lists.png"), units = "cm", dpi = "print", 
+    ggsave(paste0(dir_do, "map_lists.png"), units = "cm", dpi = "print", 
       height = 45, width = 60)
 
   
@@ -281,7 +285,7 @@
             colhead = list(fg_params = list(cex = 0.7, fontface = "plain")))), 
         xmin = date_start + 180, xmax = date_start + 270, ymin = 200, ymax =190)
       
-    ggsave(paste0(dir_ij, "list_by_date.png"), units = "cm", dpi = "print", 
+    ggsave(paste0(dir_do, "list_by_date.png"), units = "cm", dpi = "print", 
       height = 12, width = 20)
 
 
@@ -315,7 +319,7 @@
         panel.grid.minor.x = element_blank()) +
       annotate("text", x = date_start + 70, y = 300, 
         label = paste0("missing dates: n = ", missing), size = 3)
-    ggsave(paste0(dir_ij, "cause_by_date.png"), units = "cm", dpi = "print", 
+    ggsave(paste0(dir_do, "cause_by_date.png"), units = "cm", dpi = "print", 
       height = 12, width = 20)
      
     
@@ -356,7 +360,7 @@
         breaks = seq(0, 1, 0.20), expand = c(0, 0)) +
       scale_colour_manual("cause:", values=c(palette_gen[c(5,15,10)],"grey70"))+
       scale_fill_manual("cause:", values=c(palette_gen[c(5,15,10)],"grey70"))
-    ggsave(paste0(dir_ij, "cause_by_region.png"), units = "cm", dpi = "print", 
+    ggsave(paste0(dir_do, "cause_by_region.png"), units = "cm", dpi = "print", 
       height = 12, width = 20)
     
 
@@ -378,7 +382,7 @@
       stroke_size = 0.5, set_name_size = 4) + 
       theme_void() +
       theme(plot.background = element_rect(fill = "white", colour = NA))
-    ggsave(paste0(dir_ij, "venn_all_causes.png"), units = "cm", dpi = "print", 
+    ggsave(paste0(dir_do, "venn_all_causes.png"), units = "cm", dpi = "print", 
       height = 12, width = 20)
 
     # Plot intentional injury deaths
@@ -387,7 +391,7 @@
       stroke_size = 0.5, set_name_size = 4) + 
       theme_void() +
       theme(plot.background = element_rect(fill = "white", colour = NA))
-    ggsave(paste0(dir_ij, "venn_intl_injury.png"), units = "cm", dpi = "print", 
+    ggsave(paste0(dir_do, "venn_intl_injury.png"), units = "cm", dpi = "print", 
       height = 12, width = 20)
     
     # Combined plot
@@ -397,10 +401,12 @@
       font.label = list(face = "plain"), heights = c(1, 50)) +
       theme_void() +
       theme(plot.background = element_rect(fill = "white", colour = NA))
-    ggsave(paste0(dir_ij, "venn_combi.png"), units = "cm", dpi = "print", 
+    ggsave(paste0(dir_do, "venn_combi.png"), units = "cm", dpi = "print", 
       height = 15, width = 22)
     
-
+}
+}
+# closing duplication score and overlap score threshold loops
 
 #...............................................................................
 ### ENDS

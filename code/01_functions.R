@@ -88,12 +88,9 @@ f_dup <- function(df_f = df, vars_dup_f = vars_dup, threshold_dup = 3,
     for (i in x) {df_out[, x] <- round(df_out[, x], 0)}
     df_out$date_death <- as.Date(paste(df_out$year_death, df_out$month_death, 
       df_out$day_death, sep="-"), "%Y-%m-%d")
-    df_out$date_death_imp <- as.Date(paste(df_out$year_death_imp, 
-      df_out$month_death_imp, df_out$day_death_imp, sep="-"), "%Y-%m-%d")
       
       # set dates to NA if they are after end of data collection
       df_out[which(df_out$date_death > date_end_f), "date_death"] <- NA
-      df_out[which(df_out$date_death_imp > date_end_f), "date_death_imp"] <- NA
 
     # Return
     return(df_out)
@@ -369,12 +366,9 @@ f_ovrlp <- function(df_f = df_out, ovrlp_f = ovrlp, vars_ovrlp_f = vars_ovrlp,
     for (i in x) {df_out[, x] <- round(df_out[, x], 0)}
     df_out$date_death <- as.Date(paste(df_out$year_death, df_out$month_death, 
       df_out$day_death, sep="-"), "%Y-%m-%d")
-    df_out$date_death_imp <- as.Date(paste(df_out$year_death_imp, 
-      df_out$month_death_imp, df_out$day_death_imp, sep="-"), "%Y-%m-%d")
       
       # set dates to NA if they are after end of data collection
       df_out[which(df_out$date_death > date_end_f), "date_death"] <- NA
-      df_out[which(df_out$date_death_imp > date_end_f), "date_death_imp"] <- NA
     
     # Fix list, list name and IDs of matches
     df_out$lists <- paste(df_out$list1, df_out$list2, df_out$list3, sep = "+")
@@ -398,7 +392,6 @@ f_ovrlp <- function(df_f = df_out, ovrlp_f = ovrlp, vars_ovrlp_f = vars_ovrlp,
     
     # Exclusion criterion for dates before analysis period
     df_out$excl_date <- ifelse(df_out$date_death < date_start_f, T, F)
-    df_out$excl_date_imp <- ifelse(df_out$date_death_imp < date_start_f, T, F)
 
     # Generate exclusion criterion for decedents who died outside of Sudan
       # variable to exclude because death outside Sudan

@@ -43,17 +43,14 @@
 
     # Manage exclusion date criterion
     df[which(is.na(df$excl_date)), "excl_date"] <- F
-    df[which(is.na(df$excl_date_imp)), "excl_date_imp"] <- F
     
     # Add/modify missing categories for different variables
     df[which((is.na(df$gender))), "gender"] <- "missing"
     df[which((is.na(df$age_cat))), "age_cat"] <- "missing"
-    df[which((is.na(df$age_cat_imp))), "age_cat_imp"] <- "missing"
     df[which((is.na(df$resistance_committees))), "resistance_committees"] <- F
     df$resistance_committees <- ifelse(df$resistance_committees, "yes", 
       "no / unknown")
     df[which((is.na(df$year_death))), "year_death"] <- "missing"
-    df[which((is.na(df$year_death_imp))), "year_death_imp"] <- "missing"
     
     
   #...................................      
@@ -266,20 +263,23 @@
     ggplot(long[-x, ], aes(x = date_month, group = list_name, colour =list_name, 
       fill = list_name)) +
       geom_bar(position = "dodge", stat = "count", alpha = 0.75) +
-      scale_y_continuous("number of deaths listed", expand = c(0, 0)) +
+      scale_y_continuous("number of deaths listed", 
+        expand = expansion(add = c(0, 20))) +
       scale_x_date("date", breaks = "1 month", date_labels = "%b-%Y") +
       theme_bw() +
       scale_color_manual("list:", values = list_names$list_colour) +
       scale_fill_manual("list:", values = list_names$list_colour) +
-      theme(legend.position = "top", panel.grid.major.x = element_blank()) +
-      theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1)) +
-      annotate("text", x = date_start + 70, y = 190, label = "missing dates:") +
+      theme(legend.position = "top", panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(), 
+        axis.text.x = element_text(angle = 30, hjust = 0.5, vjust = 0.7)) +
+      annotate("text", x = date_start + 100, y = 200, label = "missing dates:",
+        size = 3) +
       annotation_custom(
         tableGrob(missing, rows = NULL,
           theme = ttheme_minimal(
-            core = list(fg_params = list(cex = 0.8)),
-            colhead = list(fg_params = list(cex = 0.8, fontface = "plain")))), 
-        xmin = date_start + 180, xmax = date_start + 270, ymin = 190, ymax =180)
+            core = list(fg_params = list(cex = 0.7)),
+            colhead = list(fg_params = list(cex = 0.7, fontface = "plain")))), 
+        xmin = date_start + 180, xmax = date_start + 270, ymin = 200, ymax =190)
       
     ggsave(paste0(dir_ij, "list_by_date.png"), units = "cm", dpi = "print", 
       height = 12, width = 20)
@@ -304,15 +304,17 @@
     ggplot(df_desc[-x, ], aes(x = date_month, group = cod2, alpha = cod2)) +
       geom_bar(position = "stack", stat = "count",
         fill = palette_gen[10], colour = palette_gen[10]) +
-      scale_y_continuous("number of unique deaths", expand = c(0, 0)) +
+      scale_y_continuous("number of unique deaths", 
+        expand = expansion(add = c(0, 20))) +
       scale_x_date("date", breaks = "1 month", date_labels = "%b-%Y") +
       theme_bw() +
       scale_alpha_manual("cause:", values = c(0.75, 0.25)) +
       theme(legend.position = "top", 
-        axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1),
-        panel.grid.major.x = element_blank()) +
+        axis.text.x = element_text(angle = 30, hjust = 0.5, vjust = 0.7),
+        panel.grid.major.x = element_blank(), 
+        panel.grid.minor.x = element_blank()) +
       annotate("text", x = date_start + 70, y = 300, 
-        label = paste0("missing dates: n = ", missing))
+        label = paste0("missing dates: n = ", missing), size = 3)
     ggsave(paste0(dir_ij, "cause_by_date.png"), units = "cm", dpi = "print", 
       height = 12, width = 20)
      
@@ -346,7 +348,8 @@
       geom_text(aes(label = lab), size = 3.5, colour = "black",
         position = position_fill(vjust = 0.5)) +
       theme_bw() +
-      theme(legend.position = "top", panel.grid.major.x = element_blank()) +
+      theme(legend.position = "top", panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank()) +
       scale_x_discrete("state or grouping of states",
         labels = state_labs) +
       scale_y_continuous("percentage of all unique deaths", labels = percent,
@@ -357,6 +360,46 @@
       height = 12, width = 20)
     
 
+  #...................................      
+  ## Plot overlap among lists
+    
+    # Select dataset
+    df_all <- df[which(!df$excl_del & !df$excl_date & !df$excl_loc_death &
+        !df$excl_kht), ]
+    
+    # Rename list columns and set to logical
+    df_all[, list_names$list_name] <- df_all[, paste0("list", 1:3)]
+    df_all[, list_names$list_name] <- apply(df_all[, list_names$list_name], 2,
+      as.logical)
+    
+    # Plot all-cause deaths
+    pl_all <- ggvenn(df_all[, list_names$list_name], 
+      fill_color = list_names$list_colour, stroke_alpha = 0.5, fill_alpha = 0.3,
+      stroke_size = 0.5, set_name_size = 4) + 
+      theme_void() +
+      theme(plot.background = element_rect(fill = "white", colour = NA))
+    ggsave(paste0(dir_ij, "venn_all_causes.png"), units = "cm", dpi = "print", 
+      height = 12, width = 20)
+
+    # Plot intentional injury deaths
+    pl_inj <- ggvenn(df_all[which(!df_all$excl_cod), list_names$list_name], 
+      fill_color = list_names$list_colour, stroke_alpha = 0.5, fill_alpha = 0.7,
+      stroke_size = 0.5, set_name_size = 4) + 
+      theme_void() +
+      theme(plot.background = element_rect(fill = "white", colour = NA))
+    ggsave(paste0(dir_ij, "venn_intl_injury.png"), units = "cm", dpi = "print", 
+      height = 12, width = 20)
+    
+    # Combined plot
+    ggarrange(plotlist = list(NULL, NULL, pl_all, pl_inj), 
+      ncol = 2, nrow = 2, 
+      labels = c("all causes", "intentional injury", "", ""), 
+      font.label = list(face = "plain"), heights = c(1, 50)) +
+      theme_void() +
+      theme(plot.background = element_rect(fill = "white", colour = NA))
+    ggsave(paste0(dir_ij, "venn_combi.png"), units = "cm", dpi = "print", 
+      height = 15, width = 22)
+    
 
 
 #...............................................................................

@@ -25,7 +25,7 @@
     
     # Read dataset
     df <- as.data.frame(read_excel(
-      paste0(dir_path, "in/sdn_cam_data_12sep2024.xlsx"), sheet = "data"))
+      paste0(dir_path, "in/sdn_cam_data_final_public.xlsx"), sheet = "data"))
 
     # Fix date
     df$death_date <- as.Date(df$death_date)
@@ -37,11 +37,6 @@
       "date_death_rwd", "comments", "comments_2", "publication_date","source_2")
     df <- df[! colnames(df) %in% x]
 
-    # # Remove decedents whose del_score is < 5 (insufficient info to analyse)
-    # table(df$del_score)
-    # df <- subset(df, del_score == 5)
-        # not done at this stage, but right before capture-recapture estimation
-   
 #...............................................................................
 ### Managing different variables in the main dataset
 #...............................................................................
@@ -137,7 +132,6 @@
         
     # Age of death
     table(df$age_cat, useNA = "ifany")
-    table(df$age_cat_imp, useNA = "ifany")
     
     # Date of death
       # Specify start and end of analysis / data collection period  
@@ -147,16 +141,12 @@
       # day
       df$day_death <- ifelse(is.na(df$death_date), 15, day(df$death_date))
       table(df$day_death, useNA = "ifany")
-      df$day_death_imp <- df$day_death
-      table(df$day_death_imp, useNA = "ifany")
     
       # month  
       table(df$month_death, useNA = "ifany")
-      table(df$month_death_imp, useNA = "ifany")
       
       # year    
       table(df$year_death, useNA = "ifany")
-      table(df$year_death_imp, useNA = "ifany")
    
     # Date of leaving Sudan
       # month
@@ -183,12 +173,10 @@
     # Variables that need to be merged when there is duplication, and how  
     vars_dup <- data.frame(
       var = c("list", "list_name", "parent_id", "n_rep", "loc_death", "gender", 
-        "age_cat", "age_cat_imp", "month_death", "day_death", "day_death_imp",
-        "month_death_imp", "year_death", "year_death_imp", "del_score",
+        "age_cat", "month_death", "day_death", "year_death", "del_score",
         "resistance_committees", "cod", "sudan_leave_month","sudan_leave_year"),
       how = c("mode", "mode", "mode", "sum", "mode", "mode", 
-        "mode", "mode", "mean", "mean", "mean",
-        "mean", "mean", "mean", "mean",
+        "mode", "mean", "mean", "mean", "mean",
         "mode", "mode", "mean", "mean")
     )
       # if how == "mode" and values are discordant, take the most common of 3, 
@@ -198,14 +186,12 @@
     # Variables that need to be merged when there is overlap, and how  
     vars_ovrlp <- data.frame(
       var = c(paste0("list",1:3),paste0("list_name",1:3),paste0("final_id",1:3), 
-        "n_rep", "loc_death", "gender", 
-        "age_cat", "age_cat_imp", "month_death", "day_death", "day_death_imp",
-        "month_death_imp", "year_death", "year_death_imp", "del_score", 
+        "n_rep", "loc_death", "gender", "age_cat", "month_death", "day_death",
+        "year_death", "del_score", 
         "resistance_committees", "cod", "sudan_leave_month","sudan_leave_year"),
       how = c(rep("which", 3), rep("which", 3), rep("which", 3),   
-        "sum", "mode", "mode", 
-        "mode", "mode", "mean", "mean", "mean",
-        "mean", "mean", "mean", "mean",
+        "sum", "mode", "mode", "mode", "mean", "mean",
+        "mean", "mean",
         "mode", "mode", "mean", "mean")
     )
       # if how == "which", reshape the 1, 2 or 3 values horizontally

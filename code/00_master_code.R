@@ -28,7 +28,7 @@
       scales,        # Scaling and formatting data for visualizations
       sf,            # Work with spatial data and produce maps
       tidyverse,     # Tidyverse suite of packages
-      viridis       # Colour palettes
+      viridis        # Colour palettes
     )
 
     # Install or load packages not on CRAN

@@ -74,8 +74,7 @@ for (dd in 1:5) {
 
     # Estimate all-cause deaths and save output
     out <- f_logl(data_f = df_all, confounders = c("mmyy", "n_rep", "cod2"))
-    out_all <- f_model_average(confounders = c("mmyy", "n_rep", "cod2"))    
-    names(out_all)    
+    out_all <- f_model_average(confounders = c("mmyy", "n_rep", "cod2"))
     for (i in names(out_all)) {
       write.csv(out_all[[i]], paste0(dir_do, "all_cause_",i,".csv"),row.names=F)
     }
@@ -197,7 +196,129 @@ for (dd in 1:5) {
       height = 15, width = 22)
     
       
+#...............................................................................
+### Estimating deaths by applying random probabilities of duplication / overlap
+#...............................................................................
+
+  #...................................      
+  ## Read and prepare datasets
     
+    # Read necessary datasets
+    df_base <- readRDS(paste0(dir_path, "out/list_data_base.rds"))    
+    ovrlp <- readRDS(paste0(dir_path, "out/ovrlp_base.rds"))    
+    
+    # Identify list names
+    list_names <- data.frame(list = paste0("list", 1:3), 
+      list_name = c("public survey", "private survey", "social media"),
+      list_colour = palette_gen[c(3, 8, 13)])
+    
+    # Start and end dates of study    
+    date_start <- as.Date(paste(2023, 4, 15, sep = "-"), "%Y-%m-%d")
+    date_end <- as.Date(paste(2024, 6, 4, sep = "-"), "%Y-%m-%d")
+    
+    # Initialise output
+    n_runs <- 10
+    out_all_cause <- data.frame(run = 1:n_runs)
+    out_all_cause[, c("stratum", "unlisted", "unlisted_lci", "unlisted_uci", 
+      "total_deaths_est", "total_deaths_lci", "total_deaths_uci")] <- NA
+    out_intl_injury <- out_all_cause
+    out_all_cause_sens <- expand.grid(run = 1:n_runs, 
+      list = c(list_names$list_name, "all lists"))
+    out_all_cause_sens$list <- as.character(out_all_cause_sens$list)
+    out_all_cause_sens[, c("n_deaths", "sens_est", "sens_lci", "sens_uci")] <-NA
+    out_all_cause_sens <- out_all_cause_sens[order(out_all_cause_sens$run), ]
+    out_intl_injury_sens <- out_all_cause_sens
+    
+    
+for (i in 1:n_runs) {
+  #...................................      
+  ## Generate random matched dataset
+
+    # Progress message
+    print(paste0("now working on simulation ", i, " of ", n_runs))
+  
+    # Generate random matched dataset based on duplication/overlap probabilities
+    df_out <- f_dup(df_f = df_base, random_probs = T)
+    df <- f_ovrlp(threshold_ovrlp = NA, random_probs = T)
+    
+    # Manage cause of death and add exclusion criterion (not intentional injury)
+    df[which(is.na(df$cod)), "cod"] <- "unknown / unclear"
+    df$excl_cod <- ifelse(df$cod == "intentional injury", F, T)
+    df$cod2 <- ifelse(df$cod == "intentional injury", "intentional injury", 
+      "other")
+    
+    # Manage location of death and add exclusion criterion (not Khartoum State)
+    df$loc_death2 <- "other states"
+    df[which(df$loc_death == "Khartoum"), "loc_death2"] <- "Khartoum State"
+    df[which(df$loc_death == "outside Sudan"), "loc_death2"] <- "outside Sudan"
+    df$excl_kht <- ifelse(df$loc_death == "Khartoum", F, T)
+
+    # Manage exclusion date criterion
+    df[which(is.na(df$excl_date)), "excl_date"] <- F
+    
+    # Add/modify missing categories for different variables
+    df[which((is.na(df$gender))), "gender"] <- "missing"
+    df[which((is.na(df$age_cat))), "age_cat"] <- "missing"
+    df[which((is.na(df$resistance_committees))), "resistance_committees"] <- F
+    df$resistance_committees <- ifelse(df$resistance_committees, "yes", 
+      "no / unknown")
+    df[which((is.na(df$year_death))), "year_death"] <- "missing"
+    
+    # Generate monthly incremental variable as a potential confounder
+    df$mmyy <- ((year(df$date_death) - 
+      min(year(df$date_death), na.rm = T)) * 12) + month(df$date_death)
+    df$mmyy <- df$mmyy - min(df$mmyy, na.rm = T)
+
+  #...................................      
+  ## Estimate mortality
+    
+    # Select dataset
+    df_all <- df[which(!df$excl_del & !df$excl_date & !df$excl_loc_death &
+        !df$excl_kht), ]
+
+    # Estimate all-cause deaths and add to output
+    out <- f_logl(data_f = df_all, confounders = c("mmyy", "n_rep", "cod2"))
+    out_all <- f_model_average(confounders = c("mmyy", "n_rep", "cod2"))
+    out_all_cause[i, 2:ncol(out_all_cause)] <- 
+      out_all$out_est_raw[2:length(out_all$out_est_raw)]
+    out_all_cause_sens[which(out_all_cause_sens$run == i), 
+      2:ncol(out_all_cause_sens)] <- 
+      out_all$out_sens_raw[2:ncol(out_all$out_sens_raw)]
+    
+    # Estimate intentional injury deaths and add to output
+    out <- f_logl(data_f = df_all[which(!df_all$excl_cod), ],
+      confounders = c("mmyy", "n_rep"))
+    out_inj <- f_model_average(confounders = c("mmyy", "n_rep"))    
+    out_intl_injury[i, 2:ncol(out_intl_injury)] <- 
+      out_inj$out_est_raw[2:length(out_inj$out_est_raw)]
+    out_intl_injury_sens[which(out_intl_injury_sens$run == i), 
+      2:ncol(out_intl_injury_sens)] <- 
+      out_inj$out_sens_raw[2:ncol(out_inj$out_sens_raw)]
+  }  
+    
+  #...................................      
+  ## Average the estimates and save them
+        
+    # All-cause deaths
+    x <- aggregate(out_all_cause[, c("unlisted", "unlisted_lci", "unlisted_uci", 
+      "total_deaths_est", "total_deaths_lci", "total_deaths_uci")], 
+      by = list(stratum = out_all_cause$stratum), FUN = mean)
+    write.csv(x, paste0(dir_path, "out/all_cause_out_est_sim.csv"), row.names=F)
+    x <- aggregate(out_all_cause_sens[, c("n_deaths", "sens_est", "sens_lci", 
+      "sens_uci")], by = list(list = out_all_cause_sens$list), FUN = mean)
+    write.csv(x, paste0(dir_path, "out/all_cause_out_est_sens_sim.csv"), 
+      row.names = F)
+        
+    # Intentional injury deaths
+    x <- aggregate(out_intl_injury[, c("unlisted","unlisted_lci","unlisted_uci", 
+      "total_deaths_est", "total_deaths_lci", "total_deaths_uci")], 
+      by = list(stratum = out_intl_injury$stratum), FUN = mean)
+    write.csv(x, paste0(dir_path,"out/intl_injury_out_est_sim.csv"),row.names=F)
+    x <- aggregate(out_intl_injury_sens[, c("n_deaths", "sens_est", "sens_lci", 
+      "sens_uci")], by = list(list = out_intl_injury_sens$list), FUN = mean)
+    write.csv(x, paste0(dir_path, "out/intl_injury_out_est_sens_sim.csv"), 
+      row.names = F)
+            
       
 #...............................................................................
 ### ENDS

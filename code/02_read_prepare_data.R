@@ -37,6 +37,17 @@
       "date_death_rwd", "comments", "comments_2", "publication_date","source_2")
     df <- df[! colnames(df) %in% x]
 
+  #...................................      
+  ## Set probabilities of duplication and overlap, by score
+    
+    # Duplication (within each list)
+    dup_probs <- data.frame(dup_score = 0:5, 
+      dup_prob = c(0, 0.1, 0.2, 0.4, 0.8, 1))
+    
+    # Overlap (match across lists)
+    ovrlp_probs <- data.frame(ovrlp_score = 0:5, 
+      ovrlp_prob = c(0, 0.1, 0.2, 0.4, 0.8, 1))
+    
 #...............................................................................
 ### Managing different variables in the main dataset
 #...............................................................................
@@ -242,6 +253,10 @@
   #...................................      
   ## Generate all possible sensitivity analysis datasets
     
+    # Save base datasets
+    saveRDS(df, paste0(dir_path, "out/list_data_base.rds"))
+    saveRDS(ovrlp, paste0(dir_path, "out/ovrlp_base.rds"))
+    
     # For all possible duplication score thresholds...
     for (i in 1:5) {
       print(paste0("now creating dataset for duplication threshold ", i))
@@ -251,8 +266,8 @@
         print(paste0("  ...and overlap threshold ", j))
                 
         # generate dataset        
-        df_out <- f_dup(threshold_dup = i)
-        df_out <- f_ovrlp(threshold_ovrlp = j)
+        df_out <- f_dup(threshold_dup = i, random_probs = F)
+        df_out <- f_ovrlp(threshold_ovrlp = j, random_probs = F)
         
         # save to its own directory
         x <- paste0(dir_path, "out/d", i, "o", j)

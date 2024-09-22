@@ -14,7 +14,8 @@
 #...............................................................................
 
 f_dup <- function(df_f = df, vars_dup_f = vars_dup, threshold_dup = 3,
-  date_start_f = date_start, date_end_f = date_end) {
+  dup_probs_f = dup_probs, date_start_f = date_start, date_end_f = date_end,
+  random_probs = T) {
     
   #...................................      
   ## Prepare for merging
@@ -23,10 +24,27 @@ f_dup <- function(df_f = df, vars_dup_f = vars_dup, threshold_dup = 3,
     single <- as.data.frame.matrix(matrix(NA, ncol=nrow(vars_dup_f), nrow=1))
     colnames(single) <- vars_dup_f$var
 
-    # Apply duplicate threshold and identify the observations that need to merge
-    x <- which((df_f$dup_score >= threshold_dup) | df_f$parent)
-    df_merge <- df_f[x, ]
-    
+    # Based on merging option chosen, identify observations that need to merge
+    if (!random_probs) {
+        
+      # apply duplicate threshold and identify the observations to merge
+      x <- which((df_f$dup_score >= threshold_dup) | df_f$parent)
+      df_merge <- df_f[x, ]
+    }
+
+    if (random_probs) {
+      
+      # attribute probabilities of being duplicate
+      df_f <- merge(df_f, dup_probs_f, by = "dup_score", all.x = T)
+      
+      # randomly decide if each possible duplicate will merge, based on probs
+      df_f$dup_yes <- (df_f$dup_prob < runif(nrow(df_f)))
+      
+      # apply duplicate threshold and identify the observations to merge
+      x <- which(df_f$dup_yes | df_f$parent)
+      df_merge <- df_f[x, ]
+    }
+        
     # Set aside observations that don't need to merge aside
     df_nomerge <- df_f[-x, ]
 
@@ -730,14 +748,30 @@ f_model_average <- function(f_out = out, n_lists = 3, list_names_f = list_names,
 #...............................................................................
 
 f_ovrlp <- function(df_f = df_out, ovrlp_f = ovrlp, vars_ovrlp_f = vars_ovrlp, 
-  threshold_ovrlp = 3, date_start_f = date_start, date_end_f = date_end) {   
+  threshold_ovrlp = 3, ovrlp_probs_f = ovrlp_probs, date_start_f = date_start, 
+  date_end_f = date_end, random_probs = T) {   
 
   #...................................      
-  ## Identify a set of unique matches that meet the overlap threshold
+  ## Identify a set of unique matches that overlap, based on threshold or
+      # random probabilities
+
+    # Based on option chosen, identify observations that need to merge
+    if (!random_probs) {
+
+      # apply overlap threshold to overlap list
+      ovrlp_yes <- subset(ovrlp_f, ovrlp_score >= threshold_ovrlp)
+    }
+
+    if (random_probs) {
+      
+      # attribute probabilities of being a match
+      ovrlp_f <- merge(ovrlp_f, ovrlp_probs_f, by = "ovrlp_score", all.x = T)
+      
+      # randomly decide who is a match, based on probs
+      ovrlp_f$ovrlp_yes <- (ovrlp_f$ovrlp_prob < runif(nrow(ovrlp_f)))
+      ovrlp_yes <- ovrlp_f[which(ovrlp_f$ovrlp_yes), ]
+    }
   
-    # Apply overlap threshold to overlap list
-    ovrlp_yes <- subset(ovrlp_f, ovrlp_score >= threshold_ovrlp)
-    
     # Only retain pairs for which both people actually feature in the dataset
     ovrlp_yes <- ovrlp_yes[which(ovrlp_yes$match1_id %in% df_f$final_id & 
       ovrlp_yes$match2_id %in% df_f$final_id), ]

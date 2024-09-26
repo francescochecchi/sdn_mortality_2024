@@ -14,8 +14,8 @@
 #...............................................................................
 
 f_dup <- function(df_f = df, vars_dup_f = vars_dup, threshold_dup = 3,
-  dup_probs_f = dup_probs, date_start_f = date_start, date_end_f = date_end,
-  random_probs = T) {
+  see_f = subset(see_cum, par == "d"), date_start_f = date_start, 
+  date_end_f = date_end, random_probs = T) {
     
   #...................................      
   ## Prepare for merging
@@ -34,18 +34,34 @@ f_dup <- function(df_f = df, vars_dup_f = vars_dup, threshold_dup = 3,
 
     if (random_probs) {
       
-      # attribute probabilities of being duplicate
-      df_f <- merge(df_f, dup_probs_f, by = "dup_score", all.x = T)
+      # make sure SEE dataset is sorted
+      see_f <- see_f[order(see_f$score, see_f$prob), ]
       
+      # attribute p = 0 to observations with duplication score = 0
+      df_f$prob <- NA
+      df_f[which(df_f$dup_score == 0), "prob"] <- 0
+      
+      # for the other duplication score levels, sample from empirical SEE dist.
+      for (dd in 1:5) {
+        x <- which(df_f$dup_score == dd)
+        see_dd <- see_f[which(see_f$score == dd), c("prob", "p_cum")]
+        df_f[x, "prob"] <- approx(see_dd$p_cum, see_dd$prob, runif(length(x)), 
+          rule = 2, ties = list("ordered", mean))$y
+      }
+
+      # SIMPLER VERSION IF ONLY THE BEST ESTIMATE OF PROBABILITIES IS AVAILABLE:
+      # # attribute probabilities of being duplicate
+      # df_f <- merge(df_f, dup_probs_f, by = "dup_score", all.x = T)
+
       # randomly decide if each possible duplicate will merge, based on probs
-      df_f$dup_yes <- (df_f$dup_prob < runif(nrow(df_f)))
+      df_f$dup_yes <- (df_f$prob < runif(nrow(df_f)))
       
-      # apply duplicate threshold and identify the observations to merge
+      # identify the observations to merge
       x <- which(df_f$dup_yes | df_f$parent)
       df_merge <- df_f[x, ]
     }
         
-    # Set aside observations that don't need to merge aside
+    # Set aside observations that don't need to merge
     df_nomerge <- df_f[-x, ]
 
   #...................................      
@@ -748,8 +764,8 @@ f_model_average <- function(f_out = out, n_lists = 3, list_names_f = list_names,
 #...............................................................................
 
 f_ovrlp <- function(df_f = df_out, ovrlp_f = ovrlp, vars_ovrlp_f = vars_ovrlp, 
-  threshold_ovrlp = 3, ovrlp_probs_f = ovrlp_probs, date_start_f = date_start, 
-  date_end_f = date_end, random_probs = T) {   
+  threshold_ovrlp = 3, see_f = subset(see_cum, par == "o"), 
+  date_start_f = date_start, date_end_f = date_end, random_probs = T) {   
 
   #...................................      
   ## Identify a set of unique matches that overlap, based on threshold or
@@ -764,12 +780,30 @@ f_ovrlp <- function(df_f = df_out, ovrlp_f = ovrlp, vars_ovrlp_f = vars_ovrlp,
 
     if (random_probs) {
       
-      # attribute probabilities of being a match
-      ovrlp_f <- merge(ovrlp_f, ovrlp_probs_f, by = "ovrlp_score", all.x = T)
+      # make sure SEE dataset is sorted
+      see_f <- see_f[order(see_f$score, see_f$prob), ]
       
-      # randomly decide who is a match, based on probs
-      ovrlp_f$ovrlp_yes <- (ovrlp_f$ovrlp_prob < runif(nrow(ovrlp_f)))
-      ovrlp_yes <- ovrlp_f[which(ovrlp_f$ovrlp_yes), ]
+      # attribute p = 0 to observations with duplication score = 0
+      df_f$prob <- NA
+      df_f[which(df_f$ovrlp_score == 0), "prob"] <- 0
+      
+      # for the other duplication score levels, sample from empirical SEE dist.
+      for (oo in 1:5) {
+        x <- which(ovrlp_f$ovrlp_score == oo)
+        see_oo <- see_f[which(see_f$score == oo), c("prob", "p_cum")]
+        ovrlp_f[x, "prob"] <- approx(see_oo$p_cum, see_oo$prob, runif(length(x)), 
+          rule = 2, ties = list("ordered", mean))$y
+      }
+
+      # SIMPLER VERSION IF ONLY THE BEST ESTIMATE OF PROBABILITIES IS AVAILABLE:
+      # # attribute probabilities of being duplicate
+      # ovrlp_f <- merge(ovrlp_f, ovrlp_probs_f, by = "ovrlp_score", all.x = T)
+
+      # randomly decide if each possible duplicate will merge, based on probs
+      ovrlp_f$ovrlp_yes <- (ovrlp_f$prob < runif(nrow(ovrlp_f)))
+      
+      # identify the observations to merge
+      ovrlp_yes <- subset(ovrlp_f, ovrlp_yes)
     }
   
     # Only retain pairs for which both people actually feature in the dataset
@@ -1070,6 +1104,114 @@ f_ovrlp <- function(df_f = df_out, ovrlp_f = ovrlp, vars_ovrlp_f = vars_ovrlp,
     # Return prepared dataset
     return(df_out)
 }        
+
+
+
+#...............................................................................   
+### Function to calculate the calibration and information scores for each 
+  # elicitation expert, leading to combined scores and weights; based on 
+  # https://ocw.tudelft.nl/course-readings/2-3-2-empirical-probability-vectors/
+#...............................................................................
+
+f_see <- function(see_f = see) {
+
+  #...................................      
+  ## Compute each expert's calibration score
+    
+    # Restrict data to calibration questions only
+    see_cal <- subset(see_f, dup_score %in% c(0, 5) | ovrlp_score %in% c(0, 5))
+    
+    # Specify the right answers
+    see_cal$answer <- 0
+    see_cal[which(see_cal$dup_score == 5 | 
+      see_cal$ovrlp_score == 5), "answer"] <- 1
+    
+    # Identify where the 'right' answer falls relative to each set of estimates
+    see_cal$s <- apply(see_cal, 1, function (x) {findInterval(x[["answer"]], 
+      as.numeric(x[c("value10","value50","value90")]), rightmost.closed=T) + 1}) 
+    see_cal$s <- factor(see_cal$s, levels = 1:4)
+    
+    # Tabulate proportion of calibration answers falling within each quartile,
+      # by expert (= 'empirical' probability vector)
+    prob_s <- table(see_cal[, c("expert", "s")])
+    prob_s <- prob_s / rowSums(prob_s)
+    prob_s <- data.frame(prob_s)
+    colnames(prob_s) <- c("expert", "quartile", "s")
+    
+    # Figure out theoretical probability vector and add it to dataframe
+    x <- length(unique(prob_s$expert))
+    prob_p <- c(rep(0.10, x), rep(0.40, x), rep(0.40, x), rep(0.10, x)) 
+      # <10%, 10-49.9%, 50.0-89.9%, >=90%, repeated for each expert
+    prob_s$p <- prob_p
+    
+    # Compute the Kullback-Leibler divergence of s and p
+    prob_s$l <- prob_s$s * log(prob_s$s / prob_s$p)
+      # replace NaNs with 0s (legitimate!)
+      prob_s$l <- ifelse(prob_s$l == "NaN", 0, prob_s$l)
+    
+    # Aggregate so as to get Kullback-Leibler statistic for each expert
+    experts <- aggregate(list(l = prob_s$l), by = list(expert = prob_s$expert),
+      FUN = sum)
+
+    # Compute each expert's calibration score
+    n_q <- nrow(see_cal) / x # number of calibration questions
+    experts$cal <-  dchisq(2 * n_q * experts$l, df = 3)   
+    
+
+  #...................................      
+  ## Compute each expert's information score
+    
+    # Initialise output
+    out <- data.frame()
+    
+    # Compute the experts' information score, for each question
+    for (i in unique(see_f$pair_id)) {
+      # question responses
+      see_i <- see_f[which(see_f$pair_id == i), ]
+      
+      # add 0.10 to all question responses so as to avoid log 0
+      x <- grep("value", colnames(see_i))
+      see_i[, x] <- see_i[, x] + 0.10
+            
+      # make sure there is always a small difference between answers
+      see_i$value10 <- see_i$value10 - 0.01
+      see_i$value90 <- see_i$value90 + 0.01
+      
+      # extremes of range      
+      lo <- min(see_i$value10, na.rm = T)
+      hi <- max(see_i$value90, na.rm = T)
+      
+      # apply a 10% overshoot rule
+      lo <- lo - 0.1 * (hi - lo)
+      hi <- hi + 0.1 * (hi - lo)
+ 
+      # compute information score for the question, for each expert
+      see_i$inf <- 0.10 * log(0.10 / (see_i$value10 - lo)) + 
+        0.40 * log(0.40 / (see_i$value50 - see_i$value10)) + 
+        0.40 * log(0.40 / (see_i$value90 - see_i$value50)) + 
+        0.10 * log(0.10 / (hi - see_i$value90)) + 
+        log(hi - lo)
+  
+      # add to output
+      out <- rbind(out, see_i[, c("expert", "pair_id", "inf")])
+    }
+    
+    # Compute mean information score per expert, and add to results
+    out <- aggregate(list(inf = out$inf), by = list(expert = out$expert), mean)
+    experts <- merge(experts, out, by = "expert")
+    
+  #...................................      
+  ## Compute each expert's combined score and performance weight
+    
+    # Compute combined scores
+    experts$score <- experts$cal * experts$inf
+        
+    # Compute normalised performance weights
+    experts$wt <- experts$score / sum(experts$score)
+    
+    # Output
+    return(experts[, c("expert", "cal", "inf", "score", "wt")])
+}
 
 
 #...............................................................................

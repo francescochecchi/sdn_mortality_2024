@@ -37,16 +37,16 @@
       "date_death_rwd", "comments", "comments_2", "publication_date","source_2")
     df <- df[! colnames(df) %in% x]
 
-  #...................................      
-  ## Set probabilities of duplication and overlap, by score
-    
-    # Duplication (within each list)
-    dup_probs <- data.frame(dup_score = 0:5, 
-      dup_prob = c(0, 0.1, 0.2, 0.4, 0.8, 1))
-    
-    # Overlap (match across lists)
-    ovrlp_probs <- data.frame(ovrlp_score = 0:5, 
-      ovrlp_prob = c(0, 0.1, 0.2, 0.4, 0.8, 1))
+  # #...................................      
+  # ## Set probabilities of duplication and overlap, by score (just for testing)
+  #   
+  #   # Duplication (within each list)
+  #   dup_probs <- data.frame(dup_score = 0:5, 
+  #     dup_prob = c(0, 0.1, 0.2, 0.4, 0.8, 1))
+  #   
+  #   # Overlap (match across lists)
+  #   ovrlp_probs <- data.frame(ovrlp_score = 0:5, 
+  #     ovrlp_prob = c(0, 0.1, 0.2, 0.4, 0.8, 1))
     
 #...............................................................................
 ### Managing different variables in the main dataset
@@ -170,6 +170,141 @@
       df$sudan_leave_year <- as.integer(df$sudan_leave_year)
       
       
+#...............................................................................  
+### Reading in, preparing and visualising expert elicitation data
+#...............................................................................
+
+  #...................................      
+  ## Read in and and manage data
+
+    # Read data
+    see <-data.frame(readxl::read_excel(paste0(dir_path,"in/sdn_see_data.xlsx"), 
+      sheet = "see_data"))
+    see <- see[order(see$expert, see$pair_id), ]
+    
+    # Remove missing observations
+    x <- grep("value", colnames(see), value = T)
+    see <- see[complete.cases(see[, x]), ]
+    
+    # # Rescale the expert answers from percent to proportions
+    # see[, x] <- see[, x] / 100
+    
+    # Compute and save experts' scores and weights, and add them to dataset
+    experts <- f_see()
+    write.csv(experts, paste0(dir_path, "out/see_experts_wts.csv"), row.names=F)
+    see <- merge(see, experts[, c("expert", "wt")], by = "expert", all.x = T)
+    
+    # Streamline dataset
+    see$par <- ifelse(is.na(see$dup_score), "o", "d")
+    see$score <- ifelse(see$par == "d", see$dup_score, see$ovrlp_score)
+    see <- see[, c("expert", "par", "score", x, "wt")]
+   
+    # If we do not want to take into account experts' weights, set equal weights
+    expert_wt <- "no"
+    if (expert_wt == "no") {see$wt <- 1 / nrow(experts)}
+    
+  #...................................      
+  ## Compute empirical cumulative distributions for duplication/overlap scores
+  
+    # Initialise empirical distribution values for 0.025 intervals from 0 to 1
+    x_out <- seq(0, 1, 0.025)
+    see[, paste0("pcum_", x_out)] <- NA
+    
+    # Initialise all-expert output
+    see_all <- expand.grid(par = c("d", "o"), score = 0:5, expert = "all")
+    see_all[, colnames(see)[! colnames(see) %in% colnames(see_all)]] <- NA
+
+  for (i in c("d", "o")) {
+    
+    # Select duplication or overlap score answers
+    see_i <- subset(see, par == i)
+    
+    # For each possible score level...
+    for (j in 0:5) {
+
+      # select answers for this score level
+      see_ij <- subset(see_i, score == j)
+            
+      # linearly interpolate expert quantile distributions
+      for (k in 1:nrow(see_ij)) {
+        see_ij[k, paste0("pcum_", x_out)] <- approx(
+          y = c(0.00, 0.10, 0.50, 0.90, 1.00),
+          x = c(0, see_ij[k, c("value10", "value50", "value90")], 1),
+          xout = x_out, ties = "ordered", yright = 2, yleft = 2)$y
+      }
+      
+      # update dataset
+      see[which(see$par == i & see$score == j), paste0("pcum_",x_out)] <- 
+        see_ij[, paste0("pcum_",x_out)]
+      
+      # compute weighted mean cumulative probability distribution
+      see_all[which(see_all$par==i & see_all$score==j),paste0("pcum_",x_out)] <- 
+        apply(see_ij[, paste0("pcum_", x_out)], 2, weighted.mean, 
+          w = see_ij$wt)
+    }
+  }  
+    
+    # Average expert distributions for each score level
+    see <- aggregate(see[, paste0("pcum_", x_out)], 
+      by = see[, c("expert", "par", "score")], mean)
+    
+    # Add all-expert means to individual expert distributions
+    see <- rbind(see, see_all[, colnames(see)])
+    
+    # Save
+    saveRDS(see, paste0(dir_path, "out/see_distributions.rds"))
+
+                  
+  #...................................      
+  ## Visualise expert-elicited parameter distributions
+          
+    # Compute probability densities
+    x <- t(apply(see[, grep("pcum_", colnames(see))], 1, diff))
+    see[, paste0("p_", x_out)] <- cbind(see$pcum_0, x)
+    
+    # Reshape long
+    see_long <- reshape(see, direction = "long", 
+      varying = grep("p_", colnames(see), value = T),
+      v.names = "p", timevar = "x", idvar = c("expert", "par", "score"),
+      times = x_out, drop = grep("pcum_", colnames(see), value = T))
+    see_long$score <- paste0("score = ", see_long$score)
+    see_long$par <- factor(see_long$par, levels = c("d", "o"), 
+      labels = c("potential duplicates (within any list)", 
+        "potential matches (across lists)"))
+    
+    # Plot
+    ggplot(see_long, aes(x = x, y = p, group = expert, colour = score,
+      linewidth = expert, linetype = expert)) +
+      geom_line() +
+      scale_linewidth_manual(
+        values = c(1, rep(0.5, unique(length(see_long$expert) - 1))) ) +
+      scale_linetype_manual(
+        values = c("solid", rep("21", unique(length(see_long$expert) - 1))) ) +
+      scale_colour_viridis_d() +
+      facet_grid(par ~ score) +
+      theme_bw() +
+      scale_x_continuous("likelihood that any pair is a duplicate/match") +
+      scale_y_continuous("expert-elicited probability density") +
+      theme(legend.position = "none", 
+        axis.text.x = element_text(angle = 45, hjust = 1))
+    ggsave(paste0(dir_path, "out/see_distributions.png"),
+      dpi = "print", units = "cm", width = 18, height = 15)
+
+
+  #...................................      
+  ## Prepare cumulative expert-elicited distributions for each score level
+    
+    # Select only all-expert cumulative distributions
+    x <- grep("pcum_", colnames(see), value = T)
+    see_cum <- see[which(see$expert == "all"), c("par", "score", x)] 
+    
+    # Reshape long and save
+    see_cum <- reshape(see_cum, direction = "long", varying = x, 
+      idvar = c("par", "score"), timevar = "prob", 
+      times = x_out, v.names ="p_cum")
+    saveRDS(see_cum, paste0(dir_path, "out/see_cum_dist.rds"))
+      
+    
 #...............................................................................
 ### Generating datasets for each sensitivity scenario
 #...............................................................................
@@ -278,124 +413,6 @@
 
 
     
-#...............................................................................  
-### Reading in, preparing and visualising expert elicitation data
-#...............................................................................
-
-  #...................................      
-  ## Read in and and manage data
-
-    # Read data
-    see <-data.frame(readxl::read_excel(paste0(dir_path,"in/sdn_see_data.xlsx"), 
-      sheet = "see_data"))
-
-    # Rescale the expert answers from percent to proportions
-    x <- grep("value", colnames(see), value = T)
-    see[, x] <- see[, x] / 100
-    
-    # Compute and save experts' scores and weights, and add them to dataset
-    experts <- f_see()
-    write.csv(experts, paste0(dir_path, "out/see_experts_wts.csv"), row.names=F)
-    see <- merge(see, experts[, c("expert", "wt")], by = "expert", all.x = T)
-    
-    # Streamline dataset
-    see$par <- ifelse(is.na(see$dup_score), "o", "d")
-    see$score <- ifelse(see$par == "d", see$dup_score, see$ovrlp_score)
-    see <- see[, c("expert", "par", "score", x, "wt")]
-   
-    # If we do not want to take into account experts' weights, set equal weights
-    expert_wt <- "yes"
-    if (expert_wt == "no") {see$wt <- 1 / nrow(experts)}
-    
-  #...................................      
-  ## Compute empirical cumulative distributions for duplication/overlap scores
-  
-    # Initialise empirical distribution values for 0.025 intervals from 0 to 1
-    x_out <- seq(0, 1, 0.025)
-    see[, paste0("pcum_", x_out)] <- NA
-    
-    # Initialise all-expert output
-    see_all <- expand.grid(par = c("d", "o"), score = 0:5, expert = "all")
-    see_all[, colnames(see)[! colnames(see) %in% colnames(see_all)]] <- NA
-
-  for (i in c("d", "o")) {
-    
-    # Select duplication or overlap score answers
-    see_i <- subset(see, par == i)
-    
-    # For each possible score level...
-    for (j in 0:5) {
-
-      # select answers for this score level
-      see_ij <- subset(see_i, score == j)
-            
-      # linearly interpolate expert quantile distributions
-      for (k in 1:nrow(see_ij)) {
-        see_ij[k, paste0("pcum_", x_out)] <- approx(
-          y = c(0.00, 0.10, 0.50, 0.90, 1.00),
-          x = c(0, see_ij[k, c("value10", "value50", "value90")], 1),
-          xout = x_out, ties = "ordered", yright = 2, yleft = 2)$y
-      }
-      
-      # update dataset
-      see[which(see$par == i & see$score == j), paste0("pcum_",x_out)] <- 
-        see_ij[, paste0("pcum_",x_out)]
-      
-      # compute weighted mean cumulative probability distribution
-      see_all[which(see_all$par==i & see_all$score==j),paste0("pcum_",x_out)] <- 
-        apply(see_ij[, paste0("pcum_", x_out)], 2, weighted.mean, 
-          w = see_ij$wt)
-    }
-  }  
-    
-    # Average expert distributions for each score level
-    see <- aggregate(see[, paste0("pcum_", x_out)], 
-      by = see[, c("expert", "par", "score")], mean)
-    
-    # Add all-expert means to individual expert distributions
-    see <- rbind(see, see_all[, colnames(see)])
-    
-    # Save
-    saveRDS(see, paste0(dir_path, "out/see_distributions.rds"))
-
-                  
-  #...................................      
-  ## Visualise expert-elicited parameter distributions
-          
-    # Compute probability densitiea
-    x <- apply(see[, grep("pcum_", colnames(see))], 1, diff)
-    see[, gsub("pcum", "p", colnames(see)[grep("pcum", colnames(see))])] <- 
-      cbind(see$pcum_0.025, t(x))
-    
-    # Reshape long
-    see_long <- reshape(see, direction = "long", 
-      varying = grep("p_", colnames(see), value = T),
-      v.names = "p", timevar = "x", idvar = c("expert", "par", "score"),
-      times = x_out)
-    see_long$score <- paste0("score = ", see_long$score)
-    see_long$par <- factor(see_long$par, levels = c("d", "o"), 
-      labels = c("potential duplicates (within any list)", 
-        "potential matches (across lists)"))
-    
-    # Plot
-    ggplot(see_long, aes(x = x, y = p, group = expert, colour = score,
-      linewidth = expert, linetype = expert)) +
-      geom_line() +
-      scale_linewidth_manual(
-        values = c(1, rep(0.5, unique(length(see_long$expert) - 1))) ) +
-      scale_linetype_manual(
-        values = c("solid", rep("21", unique(length(see_long$expert) - 1))) ) +
-      scale_colour_viridis_d() +
-      facet_grid(par ~ score) +
-      theme_bw() +
-      scale_x_continuous("likelihood that any pair is a duplicate/match") +
-      scale_y_continuous("expert-elicited probability density") +
-      theme(legend.position = "none", 
-        axis.text.x = element_text(angle = 45, hjust = 1))
-    ggsave(paste0(dir_path, "out/see_distributions.png"),
-      dpi = "print", units = "cm", width = 18, height = 15)
-
-
 #...............................................................................
 ### ENDS
 #...............................................................................

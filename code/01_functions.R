@@ -54,7 +54,7 @@ f_dup <- function(df_f = df, vars_dup_f = vars_dup, threshold_dup = 3,
       # df_f <- merge(df_f, dup_probs_f, by = "dup_score", all.x = T)
 
       # randomly decide if each possible duplicate will merge, based on probs
-      df_f$dup_yes <- (df_f$prob < runif(nrow(df_f)))
+      df_f$dup_yes <- as.logical(rbinom(nrow(df_f), 1, df_f$prob))
       
       # identify the observations to merge
       x <- which(df_f$dup_yes | df_f$parent)
@@ -153,11 +153,6 @@ f_logl <- function(data_f = df, n_lists = 3,
       lnames <- list_names_f$list_name
       names(lnames) <- paste0("list", 1:3)
   
-    # Identify exposure and confounders    
-    exposure <- tolower(trimws(exposure))
-    if (! is.na(confounders[1])) {confounders <- 
-      tolower(sapply(unlist(strsplit(confounders, ",")), trimws)) }
-    
     # Prepare dataset
       # restrict data to eligible observations
       if ("eligible" %in% colnames(data_f)) {data_f <- subset(data_f, eligible == T)}
@@ -783,9 +778,9 @@ f_ovrlp <- function(df_f = df_out, ovrlp_f = ovrlp, vars_ovrlp_f = vars_ovrlp,
       # make sure SEE dataset is sorted
       see_f <- see_f[order(see_f$score, see_f$prob), ]
       
-      # attribute p = 0 to observations with duplication score = 0
-      df_f$prob <- NA
-      df_f[which(df_f$ovrlp_score == 0), "prob"] <- 0
+      # attribute p = 0 to observations with overlap score = 0
+      ovrlp_f$prob <- NA
+      ovrlp_f[which(df_f$ovrlp_f == 0), "prob"] <- 0
       
       # for the other duplication score levels, sample from empirical SEE dist.
       for (oo in 1:5) {
@@ -800,7 +795,7 @@ f_ovrlp <- function(df_f = df_out, ovrlp_f = ovrlp, vars_ovrlp_f = vars_ovrlp,
       # ovrlp_f <- merge(ovrlp_f, ovrlp_probs_f, by = "ovrlp_score", all.x = T)
 
       # randomly decide if each possible duplicate will merge, based on probs
-      ovrlp_f$ovrlp_yes <- (ovrlp_f$prob < runif(nrow(ovrlp_f)))
+      ovrlp_f$ovrlp_yes <- as.logical(rbinom(nrow(ovrlp_f), 1, ovrlp_f$prob))
       
       # identify the observations to merge
       ovrlp_yes <- subset(ovrlp_f, ovrlp_yes)
@@ -926,12 +921,16 @@ f_ovrlp <- function(df_f = df_out, ovrlp_f = ovrlp, vars_ovrlp_f = vars_ovrlp,
     triplets <- rbind(x1, x2, x3, x4)
     triplets <- t(apply(triplets, 1, sort))
     triplets <- as.data.frame(unique(triplets))
-    colnames(triplets) <- c("match1_id", "match2_id", "match3_id")
+    if (nrow(triplets) > 0)
+      {colnames(triplets) <- c("match1_id", "match2_id", "match3_id")}
     
     # Identify pairs (not triplets)
-    x <- as.vector(unlist(triplets))
-    x <- which(ovrlp_yes$match1_id %in% x | ovrlp_yes$match2_id %in% x)
-    pairs <- ovrlp_yes[-x, ]
+    pairs <- ovrlp_yes
+    if (nrow(triplets) > 0) {
+      x <- as.vector(unlist(triplets))
+      x <- which(ovrlp_yes$match1_id %in% x | ovrlp_yes$match2_id %in% x)
+      pairs <- ovrlp_yes[-x, ]
+    }
     pairs <- as.data.frame(t(apply(pairs, 1, sort)))
    
   #...................................      

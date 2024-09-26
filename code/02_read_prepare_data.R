@@ -200,7 +200,7 @@
     see <- see[, c("expert", "par", "score", x, "wt")]
    
     # If we do not want to take into account experts' weights, set equal weights
-    expert_wt <- "no"
+    expert_wt <- "yes"
     if (expert_wt == "no") {see$wt <- 1 / nrow(experts)}
     
   #...................................      

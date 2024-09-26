@@ -29,7 +29,7 @@
     date_end <- as.Date(paste(2024, 6, 4, sep = "-"), "%Y-%m-%d")
     
     # Initialise output
-    n_runs <- 10
+    n_runs <- 100
     out_all_cause <- data.frame(run = 1:n_runs)
     out_all_cause[, c("stratum", "unlisted", "unlisted_lci", "unlisted_uci", 
       "total_deaths_est", "total_deaths_lci", "total_deaths_uci")] <- NA
@@ -42,17 +42,18 @@
     out_intl_injury_sens <- out_all_cause_sens
     
     
-for (i in 1:n_runs) {
+for (run_i in 1:n_runs) {
   #...................................      
   ## Generate random matched dataset
 
     # Progress message
-    print(paste0(">>> now working on simulation ", i, " of ", n_runs))
+    print(paste0(">>> now working on simulation ", run_i, " of ", n_runs))
   
     # Generate random matched dataset based on duplication/overlap probabilities
     df_out <- f_dup(df_f = df_base, random_probs = T)
+print("ok1")    
     df <- f_ovrlp(threshold_ovrlp = NA, random_probs = T)
-    
+print("ok2")    
     # Manage cause of death and add exclusion criterion (not intentional injury)
     df[which(is.na(df$cod)), "cod"] <- "unknown / unclear"
     df$excl_cod <- ifelse(df$cod == "intentional injury", F, T)
@@ -91,9 +92,10 @@ for (i in 1:n_runs) {
     # Estimate all-cause deaths and add to output
     out <- f_logl(data_f = df_all, confounders = c("mmyy", "n_rep", "cod2"))
     out_all <- f_model_average(confounders = c("mmyy", "n_rep", "cod2"))
-    out_all_cause[i, 2:ncol(out_all_cause)] <- 
+    out_all_cause[which(out_all_cause$run == run_i), 
+      2:ncol(out_all_cause)] <- 
       out_all$out_est_raw[2:length(out_all$out_est_raw)]
-    out_all_cause_sens[which(out_all_cause_sens$run == i), 
+    out_all_cause_sens[which(out_all_cause_sens$run == run_i), 
       2:ncol(out_all_cause_sens)] <- 
       out_all$out_sens_raw[2:ncol(out_all$out_sens_raw)]
     
@@ -101,12 +103,13 @@ for (i in 1:n_runs) {
     out <- f_logl(data_f = df_all[which(!df_all$excl_cod), ],
       confounders = c("mmyy", "n_rep"))
     out_inj <- f_model_average(confounders = c("mmyy", "n_rep"))    
-    out_intl_injury[i, 2:ncol(out_intl_injury)] <- 
+    out_intl_injury[which(out_intl_injury$run == run_i), 
+      2:ncol(out_intl_injury)] <- 
       out_inj$out_est_raw[2:length(out_inj$out_est_raw)]
-    out_intl_injury_sens[which(out_intl_injury_sens$run == i), 
+    out_intl_injury_sens[which(out_intl_injury_sens$run == run_i), 
       2:ncol(out_intl_injury_sens)] <- 
       out_inj$out_sens_raw[2:ncol(out_inj$out_sens_raw)]
-  }  
+}  
     
   #...................................      
   ## Average the estimates and save them
@@ -114,20 +117,22 @@ for (i in 1:n_runs) {
     # All-cause deaths
     x <- aggregate(out_all_cause[, c("unlisted", "unlisted_lci", "unlisted_uci", 
       "total_deaths_est", "total_deaths_lci", "total_deaths_uci")], 
-      by = list(stratum = out_all_cause$stratum), FUN = median)
+      by = list(stratum = out_all_cause$stratum), FUN = median, na.rm = T)
     write.csv(x, paste0(dir_path, "out/all_cause_out_est_sim.csv"), row.names=F)
     x <- aggregate(out_all_cause_sens[, c("n_deaths", "sens_est", "sens_lci", 
-      "sens_uci")], by = list(list = out_all_cause_sens$list), FUN = median)
+      "sens_uci")], by = list(list = out_all_cause_sens$list), FUN = median, 
+      na.rm = T)
     write.csv(x, paste0(dir_path, "out/all_cause_out_est_sens_sim.csv"), 
       row.names = F)
         
     # Intentional injury deaths
     x <- aggregate(out_intl_injury[, c("unlisted","unlisted_lci","unlisted_uci", 
       "total_deaths_est", "total_deaths_lci", "total_deaths_uci")], 
-      by = list(stratum = out_intl_injury$stratum), FUN = median)
+      by = list(stratum = out_intl_injury$stratum), FUN = median, na.rm = T)
     write.csv(x, paste0(dir_path,"out/intl_injury_out_est_sim.csv"),row.names=F)
     x <- aggregate(out_intl_injury_sens[, c("n_deaths", "sens_est", "sens_lci", 
-      "sens_uci")], by = list(list = out_intl_injury_sens$list), FUN = median)
+      "sens_uci")], by = list(list = out_intl_injury_sens$list), FUN = median, 
+      na.rm = T)
     write.csv(x, paste0(dir_path, "out/intl_injury_out_est_sens_sim.csv"), 
       row.names = F)
             

@@ -233,13 +233,9 @@ for (dd in 1:5) {
         theme(legend.position = "none", axis.text = element_text(size = 17),
           axis.title = element_text(size = 17)) +
         scale_alpha_manual("number of deaths", values=c(0,0.25,0.50,0.75,1)) +
-        scale_fill_gradient(
-          low = "white",
-          high = ,
-          na.value = "grey90"
-        ) +
         annotate("text", x = 22.5, y = 22.5, size = 5,
-          label = paste0("missing: n = ", missing[i]))
+          label = paste0("missing: n = ", missing[i])) +
+        labs(y = "latitude", x = "longitude")
 
       # assign name to plot
       assign(paste0("map_", i), pl)

@@ -1114,90 +1114,136 @@ f_ovrlp <- function(df_f = df_out, ovrlp_f = ovrlp, vars_ovrlp_f = vars_ovrlp,
 
 f_see <- function(see_f = see) {
 
-  #...................................      
-  ## Compute each expert's calibration score
-    
-    # Restrict data to calibration questions only
-    see_cal <- subset(see_f, dup_score %in% c(0, 5) | ovrlp_score %in% c(0, 5))
-    
-    # Specify the right answers
-    see_cal$answer <- 0
-    see_cal[which(see_cal$dup_score == 5 | 
-      see_cal$ovrlp_score == 5), "answer"] <- 1
-    
-    # Identify where the 'right' answer falls relative to each set of estimates
-    see_cal$s <- apply(see_cal, 1, function (x) {findInterval(x[["answer"]], 
-      as.numeric(x[c("value10","value50","value90")]), rightmost.closed=T) + 1}) 
-    see_cal$s <- factor(see_cal$s, levels = 1:4)
-    
-    # Tabulate proportion of calibration answers falling within each quartile,
-      # by expert (= 'empirical' probability vector)
-    prob_s <- table(see_cal[, c("expert", "s")])
-    prob_s <- prob_s / rowSums(prob_s)
-    prob_s <- data.frame(prob_s)
-    colnames(prob_s) <- c("expert", "quartile", "s")
-    
-    # Figure out theoretical probability vector and add it to dataframe
-    x <- length(unique(prob_s$expert))
-    prob_p <- c(rep(0.10, x), rep(0.40, x), rep(0.40, x), rep(0.10, x)) 
-      # <10%, 10-49.9%, 50.0-89.9%, >=90%, repeated for each expert
-    prob_s$p <- prob_p
-    
-    # Compute the Kullback-Leibler divergence of s and p
-    prob_s$l <- prob_s$s * log(prob_s$s / prob_s$p)
-      # replace NaNs with 0s (legitimate!)
-      prob_s$l <- ifelse(prob_s$l == "NaN", 0, prob_s$l)
-    
-    # Aggregate so as to get Kullback-Leibler statistic for each expert
-    experts <- aggregate(list(l = prob_s$l), by = list(expert = prob_s$expert),
-      FUN = sum)
-
-    # Compute each expert's calibration score
-    n_q <- nrow(see_cal) / x # number of calibration questions
-    experts$cal <-  dchisq(2 * n_q * experts$l, df = 3)   
-    
+  # #...................................      
+  # ## Compute each expert's calibration score (old version)
+  #   
+  #   # Restrict data to calibration questions only
+  #   see_cal <- subset(see_f, dup_score == 0 | ovrlp_score == 0)
+  #   
+  #   # Specify the right answers
+  #   see_cal$answer <- 0
+  # 
+  #   # Identify where the 'right' answer falls relative to each set of estimates
+  #   see_cal$s <- apply(see_cal, 1, function (x) {findInterval(x[["answer"]], 
+  #     as.numeric(x[c("value10","value50","value90")]), rightmost.closed=T) + 1}) 
+  #   see_cal$s <- factor(see_cal$s, levels = 1:4)
+  #   
+  #   # Tabulate proportion of calibration answers falling within each quartile,
+  #     # by expert (= 'empirical' probability vector)
+  #   prob_s <- table(see_cal[, c("expert", "s")])
+  #   prob_s <- prob_s / rowSums(prob_s)
+  #   prob_s <- data.frame(prob_s)
+  #   colnames(prob_s) <- c("expert", "quartile", "s")
+  #   
+  #   # Figure out theoretical probability vector and add it to dataframe
+  #   x <- length(unique(prob_s$expert))
+  #   prob_p <- c(rep(0.10, x), rep(0.40, x), rep(0.40, x), rep(0.10, x)) 
+  #     # <10%, 10-49.9%, 50.0-89.9%, >=90%, repeated for each expert
+  #   prob_s$p <- prob_p
+  #   
+  #   # Compute the Kullback-Leibler divergence of s and p
+  #   prob_s$l <- prob_s$s * log(prob_s$s / prob_s$p)
+  #     # replace NaNs with 0s (legitimate!)
+  #     prob_s$l <- ifelse(prob_s$l == "NaN", 0, prob_s$l)
+  #   
+  #   # Aggregate so as to get Kullback-Leibler statistic for each expert
+  #   experts <- aggregate(list(l = prob_s$l), by = list(expert = prob_s$expert),
+  #     FUN = sum)
+  # 
+  #   # Compute each expert's calibration score
+  #   n_q <- nrow(see_cal) / x # number of calibration questions
+  #   experts$cal <-  dchisq(2 * n_q * experts$l, df = 3)   
 
   #...................................      
-  ## Compute each expert's information score
+  ## Compute each expert's calibration score (new version)
     
     # Initialise output
-    out <- data.frame()
+    experts <- data.frame(expert = unique(see_f$expert))
+    out <- data.frame(expert = unique(see_f$expert), bias = NA)
+
+    # Restrict data to calibration questions only
+    see_cal <- subset(see_f, dup_score == 0 | ovrlp_score == 0)
     
-    # Compute the experts' information score, for each question
-    for (i in unique(see_f$pair_id)) {
-      # question responses
-      see_i <- see_f[which(see_f$pair_id == i), ]
-      
-      # add 0.10 to all question responses so as to avoid log 0
-      x <- grep("value", colnames(see_i))
-      see_i[, x] <- see_i[, x] + 0.10
-            
-      # make sure there is always a small difference between answers
-      see_i$value10 <- see_i$value10 - 0.01
-      see_i$value90 <- see_i$value90 + 0.01
-      
-      # extremes of range      
-      lo <- min(see_i$value10, na.rm = T)
-      hi <- max(see_i$value90, na.rm = T)
-      
-      # apply a 10% overshoot rule
-      lo <- lo - 0.1 * (hi - lo)
-      hi <- hi + 0.1 * (hi - lo)
- 
-      # compute information score for the question, for each expert
-      see_i$inf <- 0.10 * log(0.10 / (see_i$value10 - lo)) + 
-        0.40 * log(0.40 / (see_i$value50 - see_i$value10)) + 
-        0.40 * log(0.40 / (see_i$value90 - see_i$value50)) + 
-        0.10 * log(0.10 / (hi - see_i$value90)) + 
-        log(hi - lo)
-  
-      # add to output
-      out <- rbind(out, see_i[, c("expert", "pair_id", "inf")])
+    # Compute slope of best-fit line of probability as a function of score 1-5
+    for (i in unique(see_f$expert)) {
+      see_i <- see_cal[which(see_cal$expert == i), ]
+      out[which(out$expert == i), "bias"] <- 1 - mean(see_i$value50)
     }
+
+    # Add to results
+    out$cal <- out$bias
+    experts <- merge(experts, out, by = "expert")      
+
+        
+  # #...................................      
+  # ## Compute each expert's information score (old version)
+  #   
+  #   # Initialise output
+  #   out <- data.frame()
+  #   
+  #   # Compute the experts' information score, for each question
+  #   for (i in unique(see_f$pair_id)) {
+  #     # question responses
+  #     see_i <- see_f[which(see_f$pair_id == i), ]
+  #     
+  #     # add 0.10 to all question responses so as to avoid log 0
+  #     x <- grep("value", colnames(see_i))
+  #     see_i[, x] <- see_i[, x] + 0.10
+  #           
+  #     # make sure there is always a small difference between answers
+  #     see_i$value10 <- see_i$value10 - 0.01
+  #     see_i$value90 <- see_i$value90 + 0.01
+  #     
+  #     # extremes of range      
+  #     lo <- min(see_i$value10, na.rm = T)
+  #     hi <- max(see_i$value90, na.rm = T)
+  #     
+  #     # apply a 10% overshoot rule
+  #     lo <- lo - 0.1 * (hi - lo)
+  #     hi <- hi + 0.1 * (hi - lo)
+  # 
+  #     # compute information score for the question, for each expert
+  #     see_i$inf <- 0.10 * log(0.10 / (see_i$value10 - lo)) + 
+  #       0.40 * log(0.40 / (see_i$value50 - see_i$value10)) + 
+  #       0.40 * log(0.40 / (see_i$value90 - see_i$value50)) + 
+  #       0.10 * log(0.10 / (hi - see_i$value90)) + 
+  #       log(hi - lo)
+  # 
+  #     # add to output
+  #     out <- rbind(out, see_i[, c("expert", "pair_id", "inf")])
+  #   }
+  #   
+  #   # Compute mean information score per expert, and add to results
+  #   out <- aggregate(list(inf = out$inf), by = list(expert = out$expert), mean)
+  #   experts <- merge(experts, out, by = "expert")
     
-    # Compute mean information score per expert, and add to results
-    out <- aggregate(list(inf = out$inf), by = list(expert = out$expert), mean)
-    experts <- merge(experts, out, by = "expert")
+    
+  #...................................      
+  ## Compute each expert's information score (new version)
+      # score highly experts who discriminate most between high and low score
+        
+    # Initialise output
+    out <- data.frame(expert = unique(see_f$expert), slope = NA, variance = NA)
+    see_f$score <- rowSums(see_f[, c("dup_score", "ovrlp_score")], na.rm = T)
+    
+    # Compute slope of best-fit line of probability as a function of score 1-5
+    for (i in unique(see_f$expert)) {
+      see_i <- see_f[which(see_f$expert == i & see_f$score > 0), 
+        c( "pair_id", "score", "value50", "value10", "value90")]
+      see_i <- reshape(see_i, direction = "long", idvar = c("pair_id", "score"),
+        varying = c("value50", "value10", "value90"), timevar = "level",
+        times = c("50", "10", "90"), v.names = "prob")
+      see_i[which(see_i$prob == 1), "prob"] <- 0.99
+      see_i[which(see_i$prob == 0), "prob"] <- 0.01
+      x <- lm(prob ~ score, data = see_i)
+      out[which(out$expert == i), "slope"] <- coefficients(x)[["score"]]
+      out[which(out$expert == i), "variance"] <- 
+        var(see_f[which(see_f$expert == i & see_f$score > 0), "value50"])
+    }
+
+    # Add to results
+    out$inf <- out$slope
+    experts <- merge(experts, out, by = "expert")  
     
   #...................................      
   ## Compute each expert's combined score and performance weight

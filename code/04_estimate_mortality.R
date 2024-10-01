@@ -29,7 +29,7 @@
     date_end <- as.Date(paste(2024, 6, 4, sep = "-"), "%Y-%m-%d")
     
     # Initialise output
-    n_runs <- 100
+    n_runs <- 10
     out_all_cause <- data.frame(run = 1:n_runs)
     out_all_cause[, c("stratum", "unlisted", "unlisted_lci", "unlisted_uci", 
       "total_deaths_est", "total_deaths_lci", "total_deaths_uci")] <- NA
@@ -51,9 +51,7 @@ for (run_i in 1:n_runs) {
   
     # Generate random matched dataset based on duplication/overlap probabilities
     df_out <- f_dup(df_f = df_base, random_probs = T)
-print("ok1")    
     df <- f_ovrlp(threshold_ovrlp = NA, random_probs = T)
-print("ok2")    
     # Manage cause of death and add exclusion criterion (not intentional injury)
     df[which(is.na(df$cod)), "cod"] <- "unknown / unclear"
     df$excl_cod <- ifelse(df$cod == "intentional injury", F, T)

@@ -216,21 +216,26 @@ for (dd in 1:5) {
       
       # prepare
       tab$n_deaths <- unlist(sf::st_drop_geometry(tab[, i]))
+      tab$n_deaths_cat <- cut(tab$n_deaths, breaks = c(0,1,20,100,500,100000),
+        include.lowest = T, right = F, labels = c("0",
+          "1 to 19", "20 to 99", "100 to 499", ">=500"))
       
       # create labels
       tab$labs <- paste0(tab$shapeName, "\n (n = ", tab$n_deaths, ")")
       
       # map
       pl <- ggplot(tab) + 
-        geom_sf(aes(fill = n_deaths)) + 
-        geom_sf_label(aes(label = labs), size = 5, alpha = 0.50) +
-        labs(x = "latitude", y = "longitude") +
+        geom_sf(aes(alpha = n_deaths_cat), 
+          fill = list_names[which(list_names$list_name == i), "list_colour"]) + 
+        geom_label_repel(aes(label = labs, geometry = geometry), size = 5, 
+          alpha = 0.75, stat = "sf_coordinates") +
         theme_bw() +
         theme(legend.position = "none", axis.text = element_text(size = 17),
           axis.title = element_text(size = 17)) +
+        scale_alpha_manual("number of deaths", values=c(0,0.25,0.50,0.75,1)) +
         scale_fill_gradient(
           low = "white",
-          high = list_names[which(list_names$list_name == i), "list_colour"],
+          high = ,
           na.value = "grey90"
         ) +
         annotate("text", x = 22.5, y = 22.5, size = 5,
@@ -254,7 +259,7 @@ for (dd in 1:5) {
   ## Graph timeline of deaths per month, by list
     
     # Prepare data
-    long$date_month <- as.Date(paste(15, month(long$date_death), 
+    long$date_month <- as.Date(paste("01", month(long$date_death), 
       year(long$date_death), sep = "-"), format = "%d-%m-%Y")
 
     # Set aside the number of missing
@@ -269,12 +274,13 @@ for (dd in 1:5) {
       geom_bar(position = "dodge", stat = "count", alpha = 0.75) +
       scale_y_continuous("number of deaths listed", 
         expand = expansion(add = c(0, 20))) +
-      scale_x_date("date", breaks = "1 month", date_labels = "%b-%Y") +
+      scale_x_date("date", breaks = "1 month", date_labels = "%b-%Y", 
+        expand = c(0,0)) +
       theme_bw() +
       scale_color_manual("list:", values = list_names$list_colour) +
       scale_fill_manual("list:", values = list_names$list_colour) +
       theme(legend.position = "top", panel.grid.major.x = element_blank(),
-        panel.grid.minor.x = element_blank(), 
+        panel.grid.minor.x = element_blank(),
         axis.text.x = element_text(angle = 30, hjust = 0.5, vjust = 0.7)) +
       annotate("text", x = date_start + 100, y = 200, label = "missing dates:",
         size = 3) +
@@ -289,6 +295,40 @@ for (dd in 1:5) {
       height = 12, width = 20)
 
 
+  #...................................      
+  ## Graph sex proportion of deaths per month, by list
+    
+    # Prepare data
+    long$date_month <- as.Date(paste("01", month(long$date_death), 
+      year(long$date_death), sep = "-"), format = "%d-%m-%Y")
+    
+    # Set aside the number of missing
+    x <- which(is.na(long$date_month) | long$gender == "missing")
+
+    # Graph 
+    ggplot(long[-x, ], aes(x = date_month, group = gender, colour = list_name, 
+      fill = list_name, alpha = gender)) +
+      geom_bar(position = "fill", stat = "count") +
+      geom_text(aes(label = after_stat(count)), position = "fill", 
+        stat = "count", colour = "black", size = 3, vjust = 1.3, alpha = 1) +
+      scale_y_continuous("proportion of deaths listed", 
+        expand = expansion(add = c(0, 0)), labels = percent) +
+      scale_x_date("date", breaks = "1 month", date_labels = "%b-%Y",
+        expand = c(0,0)) +
+      theme_bw() +
+      scale_color_manual("list:", values = list_names$list_colour) +
+      scale_fill_manual("list:", values = list_names$list_colour) +
+      scale_alpha_manual("sex", values = c(0.75, 0.25, 1)) +
+      facet_grid(list_name ~ .) +
+      theme(legend.position = "top", panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(), panel.spacing = unit(1, "lines"),
+        axis.text.x = element_text(angle = 30, hjust = 0.5, vjust = 0.7))
+
+    ggsave(paste0(dir_do, "list_by_date_sex.png"), units = "cm", dpi = "print", 
+      height = 12, width = 20)
+    
+    
+    
 #...............................................................................
 ### Describing the matched dataset
 #...............................................................................

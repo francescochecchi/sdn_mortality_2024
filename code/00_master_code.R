@@ -18,6 +18,7 @@
     pacman::p_load(
       ggplot2,       # Data visualization
       ggpubr,        # Arranging multiple plots into a single plot
+      ggrepel,       # Improve position of plot labels
       ggvenn,        # Produce Venn diagrams
       gridExtra,     # Add tables to plot areas
       gtools,        # Assist various programming tasks

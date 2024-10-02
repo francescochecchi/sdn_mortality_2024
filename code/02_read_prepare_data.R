@@ -413,6 +413,27 @@
 
 
     
+  #...................................      
+  ## Generate sample of duplication and overlap instances for expert elicitation
+    
+    # Number of sets of pairs for each [score_pair1][score_pair2] combination
+    n_sets <- 5
+    
+    # Set up output
+    see_sets <- as.data.frame(rbind(combinations(6,2,0:5), 
+      combinations(6,2,0:5)))
+    colnames(see_sets) <- c("score_a", "score_b")
+    see_sets$par <- c(rep("dup", nrow(see_sets)/2), 
+      rep("ovrlp", nrow(see_sets)/2))
+    
+    # Overlap pairs
+    for (i in 1:nrow(see_sets)) {
+      ovrlp_i <- subset(ovrlp, ovrlp_score == i) 
+      
+        ovrlp_ij <- subset(ovrlp, ovrlp_score == j)
+    }
+    
+    
 #...............................................................................
 ### ENDS
 #...............................................................................

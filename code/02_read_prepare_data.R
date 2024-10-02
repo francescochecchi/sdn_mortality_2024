@@ -412,9 +412,11 @@
     }  
 
 
-    
   #...................................      
   ## Generate sample of duplication and overlap instances for expert elicitation
+    
+    # Eliminate records to be deleted
+    df <- subset(df, del_score == 5)
     
     # Number of sets of pairs for each [score_pair1][score_pair2] combination
     n_sets <- 5
@@ -434,7 +436,19 @@
       "pair_ref_id2")] <- NA
         
     # Duplication pairs
-        
+    for (i in 1:4) {
+      x <- which(df$dup_id != df$parent_id & df$dup_score == i)
+      x <- sample(x, n_sets, replace = F)
+      see_sets[which(see_sets$par == "dup" & see_sets$score_comp == i),
+        c("pair_comp_id1", "pair_comp_id2")] <- 
+        df[x, c("parent_id", "dup_id")]
+    }
+    see_sets <- see_sets[order(see_sets$par,see_sets$set, see_sets$score_comp),]
+    x <- sort(rep(sample(which(df$dup_id != df$parent_id & df$dup_score == 5), 
+      n_sets, replace=F), 4))
+    see_sets[which(see_sets$par=="dup"), c("pair_ref_id1","pair_ref_id2")] <-
+      df[x, c("parent_id", "dup_id")]
+     
     # Overlap pairs
     for (i in 1:4) {
       x <- sample(which(ovrlp$ovrlp_score == i), n_sets, replace = F)
@@ -447,7 +461,49 @@
     see_sets[which(see_sets$par=="ovrlp"), c("pair_ref_id1","pair_ref_id2")] <-
       ovrlp[x, c("match1_id", "match2_id")]
     
+    # Extract information for each individual in the sets
+      
+      # reshape data
+      x <- reshape(see_sets, direction = "long", varying = c("pair_comp_id1", 
+        "pair_comp_id2", "pair_ref_id1", "pair_ref_id2"), 
+        idvar = c("par", "set", "score_comp", "score_ref"), timevar = "type",
+        times = c("comp_pair_person1", "comp_pair_person2", "ref_pair_person1",
+          "ref_pair_person2"), v.names = "id")
+      x$group = ifelse(grepl("comp", x$type), "comparison", "reference")
+      x$score <- ifelse(x$group == "comparison", x$score_comp, x$score_ref)
+      x$person <- ifelse(grepl("person1", x$type), "a", "b")  
+      x$pair_id <- paste(x$par, paste0("set", x$set), x$group, x$score, sep=".")  
+      x$pair_id <- gsub("reference.5", "reference", x$pair_id)
+      x <- x[, c("par", "set", "group", "score", "pair_id", "person", "id")]
+      colnames(x)[ncol(x)] <- "dup_id"
+      x <- unique(x)
+      
+      # read nominal dataset (not uploaded to public Github repository)
+      private <- data.frame(read_excel(paste0(dir_path, 
+        "in/sdn_cam_data_final_private.xlsx")))
+      private$dup_id <- gsub("PB_", "PB", private$dup_id)
+      private$dup_id <- gsub("PV_", "PV", private$dup_id)
+      private$dup_id <- gsub("SM_", "SM", private$dup_id)
+      
+      # duplicates
+      x1 <- subset(x, par == "dup")
+      x1 <- merge(x1, private, by = "dup_id", all.x = T)      
     
+      # matches
+      x2 <- subset(x, par == "ovrlp")
+      x2 <- merge(x2, private, by = "dup_id", all.x = T)      
+
+      # all together
+      x <- rbind(x1, x2)
+      x <- x[, c("par", "set", "group", "pair_id", "score", "person", 
+        "dup_id", "gender", "age", "age_cat", "cleaned_name", "name", 
+        "nickname", "titles", "loc_death", "loc_death_rwd_1", "loc_death_rwd_2", 
+        "month_death", "year_death", "cod", "cod_rwd", "job", 
+        "resistance_committees", "hcw", "sudan_leave_year", "sudan_leave_month",
+        "source", "publication_date")]
+      write.csv(x, paste0(dir_path, "out/see_sets_data.csv"), row.names = F,
+        fileEncoding = "UTF-8")
+              
 #...............................................................................
 ### ENDS
 #...............................................................................

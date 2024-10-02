@@ -419,19 +419,33 @@
     # Number of sets of pairs for each [score_pair1][score_pair2] combination
     n_sets <- 5
     
-    # Set up output
-    see_sets <- as.data.frame(rbind(combinations(6,2,0:5), 
-      combinations(6,2,0:5)))
-    colnames(see_sets) <- c("score_a", "score_b")
-    see_sets$par <- c(rep("dup", nrow(see_sets)/2), 
-      rep("ovrlp", nrow(see_sets)/2))
+    # # Set up output
+    # see_sets <- as.data.frame(rbind(combinations(6,2,0:5), 
+    #   combinations(6,2,0:5)))
+    # colnames(see_sets) <- c("score_a", "score_b")
+    # see_sets$par <- c(rep("dup", nrow(see_sets)/2), 
+    #   rep("ovrlp", nrow(see_sets)/2))
     
+    # Set up output
+    see_sets <- expand.grid(par = c("dup", "ovrlp"), set = 1:n_sets,
+      score_comp = 1:4)
+    see_sets$score_ref <- 5
+    see_sets[, c("pair_comp_id1", "pair_comp_id2", "pair_ref_id1", 
+      "pair_ref_id2")] <- NA
+        
+    # Duplication pairs
+        
     # Overlap pairs
-    for (i in 1:nrow(see_sets)) {
-      ovrlp_i <- subset(ovrlp, ovrlp_score == i) 
-      
-        ovrlp_ij <- subset(ovrlp, ovrlp_score == j)
+    for (i in 1:4) {
+      x <- sample(which(ovrlp$ovrlp_score == i), n_sets, replace = F)
+      see_sets[which(see_sets$par == "ovrlp" & see_sets$score_comp == i),
+        c("pair_comp_id1", "pair_comp_id2")] <- 
+        ovrlp[x, c("match1_id", "match2_id")]
     }
+    see_sets <- see_sets[order(see_sets$par,see_sets$set, see_sets$score_comp),]
+    x <- sort(rep(sample(which(ovrlp$ovrlp_score == 5), n_sets, replace=F), 4))
+    see_sets[which(see_sets$par=="ovrlp"), c("pair_ref_id1","pair_ref_id2")] <-
+      ovrlp[x, c("match1_id", "match2_id")]
     
     
 #...............................................................................

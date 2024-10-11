@@ -17,7 +17,7 @@
     # Read necessary datasets
     df_base <- readRDS(paste0(dir_path, "out/list_data_base.rds"))    
     ovrlp <- readRDS(paste0(dir_path, "out/ovrlp_base.rds")) 
-    see_cum <- readRDS(paste0(dir_path, "out/see_cum_dist.rds")) 
+    # see_cum <- readRDS(paste0(dir_path, "out/see_cum_dist.rds")) 
     
     # Identify list names
     list_names <- data.frame(list = paste0("list", 1:3), 

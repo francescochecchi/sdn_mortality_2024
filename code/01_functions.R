@@ -14,8 +14,10 @@
 #...............................................................................
 
 f_dup <- function(df_f = df, vars_dup_f = vars_dup, threshold_dup = 3,
-  see_f = subset(see_cum, par == "d"), date_start_f = date_start, 
-  date_end_f = date_end, random_probs = T) {
+  date_start_f = date_start, date_end_f = date_end, random_probs = T,
+  dup_probs_f = dup_probs
+  # , see_f = subset(see_cum, par == "d") 
+  ) {
     
   #...................................      
   ## Prepare for merging
@@ -34,27 +36,28 @@ f_dup <- function(df_f = df, vars_dup_f = vars_dup, threshold_dup = 3,
 
     if (random_probs) {
       
-      # make sure SEE dataset is sorted
-      see_f <- see_f[order(see_f$score, see_f$prob), ]
-      
-      # attribute p = 0 to observations with duplication score = 0
-      df_f$prob <- NA
-      df_f[which(df_f$dup_score == 0), "prob"] <- 0
-      
-      # for the other duplication score levels, sample from empirical SEE dist.
-      for (dd in 1:5) {
-        x <- which(df_f$dup_score == dd)
-        see_dd <- see_f[which(see_f$score == dd), c("prob", "p_cum")]
-        df_f[x, "prob"] <- approx(see_dd$p_cum, see_dd$prob, runif(length(x)), 
-          rule = 2, ties = list("ordered", mean))$y
-      }
+      # VERSION WITH FULL SEE CUMULATIVE EMPIRICAL DISTRIBUTIONS
+      # # make sure SEE dataset is sorted
+      # see_f <- see_f[order(see_f$score, see_f$prob), ]
+      # 
+      # # attribute p = 0 to observations with duplication score = 0
+      # df_f$prob <- NA
+      # df_f[which(df_f$dup_score == 0), "prob"] <- 0
+      # 
+      # # for the other duplication score levels, sample from empirical SEE dist.
+      # for (dd in 1:5) {
+      #   x <- which(df_f$dup_score == dd)
+      #   see_dd <- see_f[which(see_f$score == dd), c("prob", "p_cum")]
+      #   df_f[x, "prob"] <- approx(see_dd$p_cum, see_dd$prob, runif(length(x)), 
+      #     rule = 2, ties = list("ordered", mean))$y
+      # }
 
       # SIMPLER VERSION IF ONLY THE BEST ESTIMATE OF PROBABILITIES IS AVAILABLE:
-      # # attribute probabilities of being duplicate
-      # df_f <- merge(df_f, dup_probs_f, by = "dup_score", all.x = T)
+      # attribute probabilities of being duplicate
+      df_f <- merge(df_f, dup_probs_f, by = "dup_score", all.x = T)
 
       # randomly decide if each possible duplicate will merge, based on probs
-      df_f$dup_yes <- as.logical(rbinom(nrow(df_f), 1, df_f$prob))
+      df_f$dup_yes <- as.logical(rbinom(nrow(df_f), 1, df_f$dup_prob))
       
       # identify the observations to merge
       x <- which(df_f$dup_yes | df_f$parent)
@@ -759,8 +762,10 @@ f_model_average <- function(f_out = out, n_lists = 3, list_names_f = list_names,
 #...............................................................................
 
 f_ovrlp <- function(df_f = df_out, ovrlp_f = ovrlp, vars_ovrlp_f = vars_ovrlp, 
-  threshold_ovrlp = 3, see_f = subset(see_cum, par == "o"), 
-  date_start_f = date_start, date_end_f = date_end, random_probs = T) {   
+  threshold_ovrlp = 3, date_start_f = date_start, date_end_f = date_end, 
+  random_probs = T, ovrlp_probs_f = ovrlp_probs
+  # , see_f = subset(see_cum, par == "o") 
+  ) {   
 
   #...................................      
   ## Identify a set of unique matches that overlap, based on threshold or
@@ -775,27 +780,28 @@ f_ovrlp <- function(df_f = df_out, ovrlp_f = ovrlp, vars_ovrlp_f = vars_ovrlp,
 
     if (random_probs) {
       
-      # make sure SEE dataset is sorted
-      see_f <- see_f[order(see_f$score, see_f$prob), ]
-      
-      # attribute p = 0 to observations with overlap score = 0
-      ovrlp_f$prob <- NA
-      ovrlp_f[which(df_f$ovrlp_f == 0), "prob"] <- 0
-      
-      # for the other duplication score levels, sample from empirical SEE dist.
-      for (oo in 1:5) {
-        x <- which(ovrlp_f$ovrlp_score == oo)
-        see_oo <- see_f[which(see_f$score == oo), c("prob", "p_cum")]
-        ovrlp_f[x, "prob"] <- approx(see_oo$p_cum, see_oo$prob, runif(length(x)), 
-          rule = 2, ties = list("ordered", mean))$y
-      }
+      # # VERSION IF FULL SEE EMPIRICAL DISTRIBUTIONS ARE AVAILABLE
+      # # make sure SEE dataset is sorted
+      # see_f <- see_f[order(see_f$score, see_f$prob), ]
+      # 
+      # # attribute p = 0 to observations with overlap score = 0
+      # ovrlp_f$prob <- NA
+      # ovrlp_f[which(df_f$ovrlp_f == 0), "prob"] <- 0
+      # 
+      # # for the other duplication score levels, sample from empirical SEE dist.
+      # for (oo in 1:5) {
+      #   x <- which(ovrlp_f$ovrlp_score == oo)
+      #   see_oo <- see_f[which(see_f$score == oo), c("prob", "p_cum")]
+      #   ovrlp_f[x, "prob"] <- approx(see_oo$p_cum, see_oo$prob, runif(length(x)), 
+      #     rule = 2, ties = list("ordered", mean))$y
+      # }
 
       # SIMPLER VERSION IF ONLY THE BEST ESTIMATE OF PROBABILITIES IS AVAILABLE:
       # # attribute probabilities of being duplicate
-      # ovrlp_f <- merge(ovrlp_f, ovrlp_probs_f, by = "ovrlp_score", all.x = T)
+      ovrlp_f <- merge(ovrlp_f, ovrlp_probs_f, by = "ovrlp_score", all.x = T)
 
       # randomly decide if each possible duplicate will merge, based on probs
-      ovrlp_f$ovrlp_yes <- as.logical(rbinom(nrow(ovrlp_f), 1, ovrlp_f$prob))
+      ovrlp_f$ovrlp_yes<-as.logical(rbinom(nrow(ovrlp_f),1,ovrlp_f$ovrlp_prob))
       
       # identify the observations to merge
       ovrlp_yes <- subset(ovrlp_f, ovrlp_yes)

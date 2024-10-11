@@ -37,16 +37,16 @@
       "date_death_rwd", "comments", "comments_2", "publication_date","source_2")
     df <- df[! colnames(df) %in% x]
 
-  # #...................................      
-  # ## Set probabilities of duplication and overlap, by score (just for testing)
-  #   
-  #   # Duplication (within each list)
-  #   dup_probs <- data.frame(dup_score = 0:5, 
-  #     dup_prob = c(0, 0.1, 0.2, 0.4, 0.8, 1))
-  #   
-  #   # Overlap (match across lists)
-  #   ovrlp_probs <- data.frame(ovrlp_score = 0:5, 
-  #     ovrlp_prob = c(0, 0.1, 0.2, 0.4, 0.8, 1))
+  #...................................
+  ## Set probabilities of duplication and overlap, by score
+
+    # Duplication (within each list)
+    dup_probs <- data.frame(dup_score = 0:5,
+      dup_prob = c(0, 0.2, 0.4, 0.6, 0.8, 1))
+
+    # Overlap (match across lists)
+    ovrlp_probs <- data.frame(ovrlp_score = 0:5,
+      ovrlp_prob = c(0, 0.2, 0.4, 0.6, 0.8, 1))
     
 #...............................................................................
 ### Managing different variables in the main dataset

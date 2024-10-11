@@ -79,6 +79,9 @@ for (run_i in 1:n_runs) {
     df$mmyy <- ((year(df$date_death) - 
       min(year(df$date_death), na.rm = T)) * 12) + month(df$date_death)
     df$mmyy <- df$mmyy - min(df$mmyy, na.rm = T)
+    
+    # Generate categorical trimester variable as a potential confounder
+    df$mmyy_cat <- cut(df$mmyy, c(0,4,8,12,18), include.lowest = T, right = F)
 
   #...................................      
   ## Estimate mortality
@@ -88,7 +91,7 @@ for (run_i in 1:n_runs) {
         !df$excl_kht), ]
 
     # Estimate all-cause deaths and add to output
-    out <- f_logl(data_f = df_all, confounders = c("mmyy", "n_rep", "cod2"))
+    out <- f_model(data_f = df_all, confounders = c("mmyy", "n_rep", "cod2"))
     out_all <- f_model_average(confounders = c("mmyy", "n_rep", "cod2"))
     out_all_cause[which(out_all_cause$run == run_i), 
       2:ncol(out_all_cause)] <- 
@@ -98,7 +101,7 @@ for (run_i in 1:n_runs) {
       out_all$out_sens_raw[2:ncol(out_all$out_sens_raw)]
     
     # Estimate intentional injury deaths and add to output
-    out <- f_logl(data_f = df_all[which(!df_all$excl_cod), ],
+    out <- f_model(data_f = df_all[which(!df_all$excl_cod), ],
       confounders = c("mmyy", "n_rep"))
     out_inj <- f_model_average(confounders = c("mmyy", "n_rep"))    
     out_intl_injury[which(out_intl_injury$run == run_i), 
@@ -200,15 +203,19 @@ for (dd in 1:5) {
       min(year(df_all$date_death), na.rm = T)) * 12) + month(df_all$date_death)
     df_all$mmyy <- df_all$mmyy - min(df_all$mmyy, na.rm = T)
 
+    # Generate categorical trimester variable as a potential confounder
+    df_all$mmyy_cat <- cut(df_all$mmyy, c(0,4,8,12,18), 
+      include.lowest = T, right = F)
+    
     # Estimate all-cause deaths and save output
-    out <- f_logl(data_f = df_all, confounders = c("mmyy", "n_rep", "cod2"))
+    out <- f_model(data_f = df_all,confounders = c("mmyy", "n_rep", "cod2"))
     out_all <- f_model_average(confounders = c("mmyy", "n_rep", "cod2"))
     for (i in names(out_all)) {
       write.csv(out_all[[i]], paste0(dir_do, "all_cause_",i,".csv"),row.names=F)
     }
     
     # Estimate intentional injury deaths and save output
-    out <- f_logl(data_f = df_all[which(!df_all$excl_cod), ],
+    out <- f_model(data_f = df_all[which(!df_all$excl_cod), ],
       confounders = c("mmyy", "n_rep"))
     out_inj <- f_model_average(confounders = c("mmyy", "n_rep"))    
     for (i in names(out_inj)) {

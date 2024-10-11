@@ -135,13 +135,13 @@ f_dup <- function(df_f = df, vars_dup_f = vars_dup, threshold_dup = 3,
 
 
 #...............................................................................
-### Function to fit each candidate log-linear model for a 3/4-list system
+### Function to fit each candidate model for a 3/4-list system
     # as per Rossi et al. https://rivista-statistica.unibo.it/article/view/9854 
 ############ WORKS, BUT TO BE REWRITTEN
 #...............................................................................
 
 
-f_logl <- function(data_f = df, n_lists = 3, 
+f_model <- function(data_f = df, n_lists = 3, 
   list_names_f = list_names, exposure = NA, confounders = NA) {
   
   #...................................      
@@ -358,10 +358,9 @@ f_logl <- function(data_f = df, n_lists = 3,
           }
         }
       }
-    
-  
+ 
   #...................................      
-  ## Fit all possible log-linear models and calculate statistics
+  ## Fit all possible models and calculate statistics
   
     # Statistics to compute for each model
       # symbol for unlisted observations
@@ -405,8 +404,8 @@ f_logl <- function(data_f = df, n_lists = 3,
       
       # fit model (or at least try)
       suppressWarnings(rm(fit) )
-      fit <- try(glm(formula = as.formula(out[i, "formula"]), family="poisson", 
-        data = df, maxit = 1000 ), silent = T)
+      fit <- try(glm(formula = as.formula(out[i, "formula"]), 
+        family="poisson", data = df, maxit = 1000 ), silent = T)
       
       # check: if model has not fit or any coefficients is NA, skip to next loop
       if (class("fit")[1] == "try-error" ) {next}
@@ -425,7 +424,8 @@ f_logl <- function(data_f = df, n_lists = 3,
           digits = 0)
       if (! is.na(exposure)) {
         if( length(levels(as.factor(df[, exposure]))) < 10 ) {
-          out[i, paste(unlisted, "screen", levels(as.factor(df[, exposure])), sep = "_")] <- 
+          out[i, paste(unlisted, "screen", 
+            levels(as.factor(df[, exposure])), sep = "_")] <- 
             aggregate(df0[, paste(unlisted, "screen", sep = "_")],
               by = list(as.factor(df0[, exposure])), 
               FUN = function(x) {round(sum(exp(na.omit(x))), digits = 0)})[, 2]
@@ -551,8 +551,8 @@ f_model_average <- function(f_out = out, n_lists = 3, list_names_f = list_names,
   for (i in 1:nrow(out)) {
     if (is.na(out[i, paste(unlisted, "screen", sep = "_")]) )
     {out[i, "eligible"] <- "no - model error or sparse dataset"}
-    if (out[i, paste(unlisted, "screen", sep = "_")] / 
-      sum(df[, "y"], na.rm = T) > plausibility_1) 
+    if ((out[i, paste(unlisted, "screen", sep = "_")] / 
+      sum(df[, "y"], na.rm = T)) > plausibility_1) 
     {out[i, "eligible"] <- "no - implausible estimate"}
     if (out[i, "lrt_p"] > plausibility_2) 
     {out[i, "eligible"] <- "no - possible over-fitting"}
@@ -583,7 +583,7 @@ f_model_average <- function(f_out = out, n_lists = 3, list_names_f = list_names,
         out[i, paste(unlisted, "lci", sep = "_")] <- 
           round(sum(na.omit(df0[, paste(unlisted, "lci", sep = "_")])),digits=0)
         out[i, paste(unlisted, "uci", sep = "_")] <- 
-          round(sum(na.omit(df0[, paste(unlisted, "uci", sep = "_")])), digits=0)
+          round(sum(na.omit(df0[, paste(unlisted, "uci", sep = "_")])),digits=0)
       
       # ...and by exposure level
       if (! is.na(exposure)) { 

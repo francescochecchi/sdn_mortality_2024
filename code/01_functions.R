@@ -1115,7 +1115,7 @@ f_ovrlp <- function(df_f = df_out, ovrlp_f = ovrlp, vars_ovrlp_f = vars_ovrlp,
 f_see <- function(see_f = see) {
 
   # #...................................      
-  # ## Compute each expert's calibration score (old version)
+  # ## Compute each expert's calibration score (version 1)
   #   
   #   # Restrict data to calibration questions only
   #   see_cal <- subset(see_f, dup_score == 0 | ovrlp_score == 0)
@@ -1154,29 +1154,29 @@ f_see <- function(see_f = see) {
   #   n_q <- nrow(see_cal) / x # number of calibration questions
   #   experts$cal <-  dchisq(2 * n_q * experts$l, df = 3)   
 
-  #...................................      
-  ## Compute each expert's calibration score (new version)
-    
-    # Initialise output
-    experts <- data.frame(expert = unique(see_f$expert))
-    out <- data.frame(expert = unique(see_f$expert), bias = NA)
-
-    # Restrict data to calibration questions only
-    see_cal <- subset(see_f, dup_score == 0 | ovrlp_score == 0)
-    
-    # Compute slope of best-fit line of probability as a function of score 1-5
-    for (i in unique(see_f$expert)) {
-      see_i <- see_cal[which(see_cal$expert == i), ]
-      out[which(out$expert == i), "bias"] <- 1 - mean(see_i$value50)
-    }
-
-    # Add to results
-    out$cal <- out$bias
-    experts <- merge(experts, out, by = "expert")      
+  # #...................................      
+  # ## Compute each expert's calibration score (version 2)
+  #   
+  #   # Initialise output
+  #   experts <- data.frame(expert = unique(see_f$expert))
+  #   out <- data.frame(expert = unique(see_f$expert), bias = NA)
+  # 
+  #   # Restrict data to calibration questions only
+  #   see_cal <- subset(see_f, dup_score == 0 | ovrlp_score == 0)
+  #   
+  #   # Compute slope of best-fit line of probability as a function of score 1-5
+  #   for (i in unique(see_f$expert)) {
+  #     see_i <- see_cal[which(see_cal$expert == i), ]
+  #     out[which(out$expert == i), "bias"] <- 1 - mean(see_i$value50)
+  #   }
+  # 
+  #   # Add to results
+  #   out$cal <- out$bias
+  #   experts <- merge(experts, out, by = "expert")      
 
         
   # #...................................      
-  # ## Compute each expert's information score (old version)
+  # ## Compute each expert's information score (version 1)
   #   
   #   # Initialise output
   #   out <- data.frame()
@@ -1217,45 +1217,61 @@ f_see <- function(see_f = see) {
   #   out <- aggregate(list(inf = out$inf), by = list(expert = out$expert), mean)
   #   experts <- merge(experts, out, by = "expert")
     
-    
-  #...................................      
-  ## Compute each expert's information score (new version)
-      # score highly experts who discriminate most between high and low score
-        
-    # Initialise output
-    out <- data.frame(expert = unique(see_f$expert), slope = NA, variance = NA)
-    see_f$score <- rowSums(see_f[, c("dup_score", "ovrlp_score")], na.rm = T)
-    
-    # Compute slope of best-fit line of probability as a function of score 1-5
-    for (i in unique(see_f$expert)) {
-      see_i <- see_f[which(see_f$expert == i & see_f$score > 0), 
-        c( "pair_id", "score", "value50", "value10", "value90")]
-      see_i <- reshape(see_i, direction = "long", idvar = c("pair_id", "score"),
-        varying = c("value50", "value10", "value90"), timevar = "level",
-        times = c("50", "10", "90"), v.names = "prob")
-      see_i[which(see_i$prob == 1), "prob"] <- 0.99
-      see_i[which(see_i$prob == 0), "prob"] <- 0.01
-      x <- lm(prob ~ score, data = see_i)
-      out[which(out$expert == i), "slope"] <- coefficients(x)[["score"]]
-      out[which(out$expert == i), "variance"] <- 
-        var(see_f[which(see_f$expert == i & see_f$score > 0), "value50"])
-    }
+  # #...................................      
+  # ## Compute each expert's information score (version 2)
+  #     # score highly experts who discriminate most between high and low score
+  #       
+  #   # Initialise output
+  #   out <- data.frame(expert = unique(see_f$expert), slope = NA, variance = NA)
+  #   see_f$score <- rowSums(see_f[, c("dup_score", "ovrlp_score")], na.rm = T)
+  #   
+  #   # Compute slope of best-fit line of probability as a function of score 1-5
+  #   for (i in unique(see_f$expert)) {
+  #     see_i <- see_f[which(see_f$expert == i & see_f$score > 0), 
+  #       c( "pair_id", "score", "value")]
+  #     see_i <- reshape(see_i, direction = "long", idvar = c("pair_id", "score"),
+  #       varying = c("value"), timevar = "level",
+  #       times = c("50", "10", "90"), v.names = "prob")
+  #     see_i[which(see_i$prob == 1), "prob"] <- 0.99
+  #     see_i[which(see_i$prob == 0), "prob"] <- 0.01
+  #     x <- lm(prob ~ score, data = see_i)
+  #     out[which(out$expert == i), "slope"] <- coefficients(x)[["score"]]
+  #     out[which(out$expert == i), "variance"] <- 
+  #       var(see_f[which(see_f$expert == i & see_f$score > 0), "value50"])
+  #   }
 
+  #...................................
+  ## Compute each expert's information score (version 3)
+      # score highly experts who have high variance between scores
+
+    # Initialise output
+    out <- data.frame(expert = unique(see_f$expert), variance = NA)
+    experts <- data.frame(expert = unique(see_f$expert))
+
+    # Compute sum of variances within sets of pairs
+    see_f$set <- substr(see_f$pair_id, 1, 2)
+    for (i in unique(see_f$expert)) {
+      see_i <- see_f[which(see_f$expert == i), c( "set", "value")]
+      x <- aggregate(list(var=see_i$value), by = list(set=see_i$set), FUN = var)
+      out[which(out$expert == i), "variance"] <- mean(x$var)
+    }
+  
     # Add to results
-    out$inf <- out$slope
+    out$inf <- out$var
     experts <- merge(experts, out, by = "expert")  
     
   #...................................      
   ## Compute each expert's combined score and performance weight
     
     # Compute combined scores
-    experts$score <- experts$cal * experts$inf
+    # experts$score <- experts$cal * experts$inf
+    experts$score <- experts$inf
         
     # Compute normalised performance weights
     experts$wt <- experts$score / sum(experts$score)
     
     # Output
-    return(experts[, c("expert", "cal", "inf", "score", "wt")])
+    return(experts[, c("expert", "score", "wt")])
 }
 
 

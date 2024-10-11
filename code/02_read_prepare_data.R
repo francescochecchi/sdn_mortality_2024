@@ -248,7 +248,7 @@
       scale_linewidth_manual("expert", values = c(10, 0.5)) +
       scale_size_continuous("expert's weight") +
       guides(colour = "none", fill = "none")
-    ggsave(paste0(dir_path, "out/02_see_distributions.png"), dpi = "print",
+    ggsave(paste0(dir_path, "out/see_distributions.png"), dpi = "print",
       width = 22, height = 12, units = "cm")
     
   # #...................................      

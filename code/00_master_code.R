@@ -76,10 +76,14 @@
   #...................................      
   ## Carry out descriptive analyses
   source(paste0(dir_path, "code/03_describe_data.R"))
+
+  #...................................      
+  ## Estimate probabilities associated with each duplication/matching score
+  source(paste0(dir_path, "code/04_estimate_score_probs.R"))
     
   #...................................      
   ## Estimate mortality using capture-recapture analysis
-  source(paste0(dir_path, "code/04_estimate_mortality.R"))
+  source(paste0(dir_path, "code/05_estimate_mortality.R"))
     
     
 

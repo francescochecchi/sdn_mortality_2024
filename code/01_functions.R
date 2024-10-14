@@ -55,10 +55,10 @@ f_dup <- function(df_f = df, vars_dup_f = vars_dup, threshold_dup = 3,
         dup_probs_dd <- dup_probs_f[which(dup_probs_f$score == dd), 
           c("p_cum", "prob")]
         df_f[x, "dup_prob"] <- approx(dup_probs_dd$p_cum, dup_probs_dd$prob, 
-          runif(length(x)), rule = 2, ties = list("ordered", mean))$y
+          runif(1), rule = 2, ties = list("ordered", mean))$y
       }
 
-      # # SIMPLER VERSION IF ONLY THE BEST ESTIMATE OF PROBABILITIES IS AVAILABLE:
+      # SIMPLER VERSION IF ONLY THE BEST ESTIMATE OF PROBABILITIES IS AVAILABLE:
       # # attribute probabilities of being duplicate
       # df_f <- merge(df_f, dup_probs_f, by = "dup_score", all.x = T)
 
@@ -147,7 +147,7 @@ f_dup <- function(df_f = df, vars_dup_f = vars_dup, threshold_dup = 3,
 #...............................................................................
 
 
-f_model <- function(data_f = df, n_lists = 3, 
+f_model <- function(data_f = df, n_lists = 3, verbose = T,
   list_names_f = list_names, exposure = NA, confounders = NA) {
   
   #...................................      
@@ -164,7 +164,8 @@ f_model <- function(data_f = df, n_lists = 3,
   
     # Prepare dataset
       # restrict data to eligible observations
-      if ("eligible" %in% colnames(data_f)) {data_f <- subset(data_f, eligible == T)}
+      if ("eligible" %in% colnames(data_f)) {
+        data_f <- subset(data_f, eligible == T)}
       
       # create unique id for each observation (ignore any existing id variable)
       data_f$key <- paste("id", 1:nrow(data_f), sep = "")
@@ -406,7 +407,8 @@ f_model <- function(data_f = df, n_lists = 3,
     
     # Fit all other models        
     for (i in 1:nrow(out) ) {
-      print(paste0("now fitting candidate model ", i, " of ", nrow(out)))
+      if (verbose) {
+        print(paste0("now fitting candidate model ", i, " of ", nrow(out)))}
       
       # fit model (or at least try)
       suppressWarnings(rm(fit) )
@@ -798,17 +800,16 @@ f_ovrlp <- function(df_f = df_out, ovrlp_f = ovrlp, vars_ovrlp_f = vars_ovrlp,
       ovrlp_f[which(ovrlp_f$ovrlp_score == 0), "ovrlp_prob"] <- 0
       ovrlp_f[which(ovrlp_f$ovrlp_score == 5), "ovrlp_prob"] <- 1
 
-      # for the other duplication score levels, sample from empirical ovrlp_probs dist.
+      # for the other duplication score levels, sample from empirical distr.
       for (oo in 1:4) {
         x <- which(ovrlp_f$ovrlp_score == oo)
         ovrlp_probs_oo <- ovrlp_probs_f[which(ovrlp_probs_f$score == oo), 
           c("prob", "p_cum")]
         ovrlp_f[x, "ovrlp_prob"] <- approx(ovrlp_probs_oo$p_cum, 
-          ovrlp_probs_oo$prob, runif(length(x)), 
-          rule = 2, ties = list("ordered", mean))$y
+          ovrlp_probs_oo$prob, runif(1), rule=2, ties = list("ordered", mean))$y
       }
 
-      # # SIMPLER VERSION IF ONLY THE BEST ESTIMATE OF PROBABILITIES IS AVAILABLE:
+      # SIMPLER VERSION IF ONLY THE BEST ESTIMATE OF PROBABILITIES IS AVAILABLE:
       # # # attribute probabilities of being duplicate
       # ovrlp_f <- merge(ovrlp_f, ovrlp_probs_f, by = "ovrlp_score", all.x = T)
 

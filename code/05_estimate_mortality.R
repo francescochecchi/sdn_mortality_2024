@@ -42,13 +42,16 @@
     out_all_cause_sens <- out_all_cause_sens[order(out_all_cause_sens$run), ]
     out_intl_injury_sens <- out_all_cause_sens
     
+    # Progress bar
+    pb <- txtProgressBar(min = 1, max = n_runs, style = 3)
+    
     
 for (run_i in 1:n_runs) {
   #...................................      
   ## Generate random matched dataset
 
-    # Progress message
-    print(paste0(">>> now working on simulation ", run_i, " of ", n_runs))
+    # Progress
+    setTxtProgressBar(pb, run_i)
   
     # Generate random matched dataset based on duplication/overlap probabilities
     df_out <- f_dup(df_f = df_base, random_probs = T)
@@ -92,7 +95,8 @@ for (run_i in 1:n_runs) {
         !df$excl_kht), ]
 
     # Estimate all-cause deaths and add to output
-    out <- f_model(data_f = df_all, confounders = c("mmyy", "n_rep", "cod2"))
+    out <- f_model(data_f = df_all, confounders = c("mmyy", "n_rep", "cod2"),
+      verbose = F)
     out_all <- f_model_average(confounders = c("mmyy", "n_rep", "cod2"))
     out_all_cause[which(out_all_cause$run == run_i), 
       2:ncol(out_all_cause)] <- 
@@ -103,7 +107,7 @@ for (run_i in 1:n_runs) {
     
     # Estimate intentional injury deaths and add to output
     out <- f_model(data_f = df_all[which(!df_all$excl_cod), ],
-      confounders = c("mmyy", "n_rep"))
+      confounders = c("mmyy", "n_rep"), verbose = F)
     out_inj <- f_model_average(confounders = c("mmyy", "n_rep"))    
     out_intl_injury[which(out_intl_injury$run == run_i), 
       2:ncol(out_intl_injury)] <- 
@@ -112,7 +116,8 @@ for (run_i in 1:n_runs) {
       2:ncol(out_intl_injury_sens)] <- 
       out_inj$out_sens_raw[2:ncol(out_inj$out_sens_raw)]
 }  
-    
+close(pb)
+        
   #...................................      
   ## Average the estimates and save them
         
@@ -209,7 +214,8 @@ for (dd in 1:5) {
       include.lowest = T, right = F)
     
     # Estimate all-cause deaths and save output
-    out <- f_model(data_f = df_all,confounders = c("mmyy", "n_rep", "cod2"))
+    out <- f_model(data_f = df_all,confounders = c("mmyy", "n_rep", "cod2"),
+      verbose = F)
     out_all <- f_model_average(confounders = c("mmyy", "n_rep", "cod2"))
     for (i in names(out_all)) {
       write.csv(out_all[[i]], paste0(dir_do, "all_cause_",i,".csv"),row.names=F)
@@ -217,7 +223,7 @@ for (dd in 1:5) {
     
     # Estimate intentional injury deaths and save output
     out <- f_model(data_f = df_all[which(!df_all$excl_cod), ],
-      confounders = c("mmyy", "n_rep"))
+      confounders = c("mmyy", "n_rep"), verbose = F)
     out_inj <- f_model_average(confounders = c("mmyy", "n_rep"))    
     for (i in names(out_inj)) {
       write.csv(out_inj[[i]],paste0(dir_do,"intl_injury_",i,".csv"),row.names=F)
@@ -313,7 +319,7 @@ for (dd in 1:5) {
     ggsave(paste0(dir_path, "out/all_sens_noci.png"), units = "cm", dpi = "print", 
       height = 15, width = 22)
     
-    # Graph without 95%CIs
+    # Graph with 95%CIs
     ggplot(df, aes(x = ovrlp_threshold, y = est, alpha = cod, group = cod,
       colour = dup_threshold, fill = dup_threshold)) +
       geom_point(size = 4) +

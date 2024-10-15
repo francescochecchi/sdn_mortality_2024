@@ -1,9 +1,9 @@
 "-","model","deaths outside any list (95%CI)","likelihood ratio p-value","AIC","posterior probability"
-"","no interactions","12327 (9462 to 16093)",3.56572435138863e-14,12728.7,0
+"","no interactions","12327 (9462 to 16093)",3.56572435139152e-14,12728.7,0
 "","private survey x public survey, private survey x social media, public survey x social media","NA (NA to NA)",1,NA,NA
-"","private survey x public survey, private survey x social media","17688 (10069 to 31408)",4.80578460217669e-07,12688.9,0.472
-"","private survey x public survey, public survey x social media","15428 (10453 to 22922)",3.83102407472633e-11,12708.63,0
-"","private survey x social media, public survey x social media","21881 (8887 to 55607)",5.33408574296154e-07,12688.68,0.527
-"","private survey x public survey","14244 (10552 to 19282)",1.36598445986435e-10,12708.68,0
-"","private survey x social media","13933 (9028 to 21674)",6.15442964246748e-10,12705.36,0
+"","private survey x public survey, private survey x social media","17688 (10069 to 31408)",4.80578460218083e-07,12688.9,0.472
+"","private survey x public survey, public survey x social media","15428 (10453 to 22922)",3.83102407472969e-11,12708.63,0
+"","private survey x social media, public survey x social media","21881 (8887 to 55607)",5.33408574296613e-07,12688.68,0.527
+"","private survey x public survey","14244 (10552 to 19282)",1.36598445986548e-10,12708.68,0
+"","private survey x social media","13933 (9028 to 21674)",6.15442964247253e-10,12705.36,0
 "","public survey x social media","12400 (8925 to 17299)",1.00522516267586e-14,12729.38,0

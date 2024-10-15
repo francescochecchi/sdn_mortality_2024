@@ -1,8 +1,8 @@
 "-","model","deaths outside any list (95%CI)","likelihood ratio p-value","AIC","posterior probability"
-"","no interactions","18145 (12496 to 26497)",2.75883111175507e-08,10256.31,0
+"","no interactions","18145 (12496 to 26497)",2.75883111175296e-08,10256.31,0
 "","private survey x public survey, private survey x social media, public survey x social media","NA (NA to NA)",1,NA,NA
 "","private survey x public survey, private survey x social media","33769 (12721 to 93289)",0.00376106494062919,10228.29,0.076
-"","private survey x public survey, public survey x social media","17134 (10383 to 28648)",6.62058828839223e-06,10242.14,0
+"","private survey x public survey, public survey x social media","17134 (10383 to 28648)",6.62058828839786e-06,10242.14,0
 "","private survey x social media, public survey x social media","NA (NA to NA)",0.681090218497719,NA,NA
 "","private survey x public survey","18106 (11991 to 27535)",8.74493455312096e-07,10247.8,0
 "","private survey x social media","27476 (14094 to 54183)",0.0178256223963259,10223.28,0.924

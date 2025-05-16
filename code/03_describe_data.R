@@ -115,7 +115,8 @@ for (dd in 1:5) {
     
     # Add list name
     long <- merge(long, list_names, by = "list", all.x = T)
-
+    long$list <- factor(long$list)
+    long$list_name <- factor(long$list_name)
       
   #...................................      
   ## Tabulate characteristics of each list, and do significance testing
@@ -245,9 +246,9 @@ for (dd in 1:5) {
     suppressWarnings(rm(map_list))
     map_list <- lapply(grep("map", ls(), value = T), get)
     ggarrange(plotlist = map_list, ncol = 2, nrow = 2, 
-      labels = list_names$list_name, font.label = list(size = 20), 
+      labels = sort(list_names$list_name), font.label = list(size = 20), 
       label.x = 0.35, label.y = 0.95)
-    ggsave(paste0(dir_do, "map_lists.png"), units = "cm", dpi = "print", 
+    ggsave(paste0(dir_do, "map_lists.pdf"), units = "cm", dpi = "print", 
       height = 45, width = 60)
 
   
@@ -273,8 +274,10 @@ for (dd in 1:5) {
       scale_x_date("date", breaks = "1 month", date_labels = "%b-%Y", 
         expand = c(0,0)) +
       theme_bw() +
-      scale_color_manual("list:", values = list_names$list_colour) +
-      scale_fill_manual("list:", values = list_names$list_colour) +
+      scale_color_manual("list:", 
+        values = list_names[order(list_names$list_name), "list_colour"]) +
+      scale_fill_manual("list:", 
+        values = list_names[order(list_names$list_name), "list_colour"]) +
       theme(legend.position = "top", panel.grid.major.x = element_blank(),
         panel.grid.minor.x = element_blank(),
         axis.text.x = element_text(angle = 30, hjust = 0.5, vjust = 0.7)) +
@@ -287,7 +290,7 @@ for (dd in 1:5) {
             colhead = list(fg_params = list(cex = 0.7, fontface = "plain")))), 
         xmin = date_start + 180, xmax = date_start + 270, ymin = 200, ymax =190)
       
-    ggsave(paste0(dir_do, "list_by_date.png"), units = "cm", dpi = "print", 
+    ggsave(paste0(dir_do, "list_by_date.pdf"), units = "cm", dpi = "print", 
       height = 12, width = 20)
 
 
@@ -312,15 +315,17 @@ for (dd in 1:5) {
       scale_x_date("date", breaks = "1 month", date_labels = "%b-%Y",
         expand = c(0,0)) +
       theme_bw() +
-      scale_color_manual("list:", values = list_names$list_colour) +
-      scale_fill_manual("list:", values = list_names$list_colour) +
+      scale_color_manual("list:", 
+        values = list_names[order(list_names$list_name), "list_colour"]) +
+      scale_fill_manual("list:", 
+        values = list_names[order(list_names$list_name), "list_colour"]) +
       scale_alpha_manual("sex", values = c(0.75, 0.25, 1)) +
       facet_grid(list_name ~ .) +
       theme(legend.position = "top", panel.grid.major.x = element_blank(),
         panel.grid.minor.x = element_blank(), panel.spacing = unit(1, "lines"),
         axis.text.x = element_text(angle = 30, hjust = 0.5, vjust = 0.7))
 
-    ggsave(paste0(dir_do, "list_by_date_sex.png"), units = "cm", dpi = "print", 
+    ggsave(paste0(dir_do, "list_by_date_sex.pdf"), units = "cm", dpi = "print", 
       height = 12, width = 20)
     
     
@@ -355,7 +360,7 @@ for (dd in 1:5) {
         panel.grid.minor.x = element_blank()) +
       annotate("text", x = date_start + 70, y = 300, 
         label = paste0("missing dates: n = ", missing), size = 3)
-    ggsave(paste0(dir_do, "cause_by_date.png"), units = "cm", dpi = "print", 
+    ggsave(paste0(dir_do, "cause_by_date.pdf"), units = "cm", dpi = "print", 
       height = 12, width = 20)
      
     
@@ -396,7 +401,7 @@ for (dd in 1:5) {
         breaks = seq(0, 1, 0.20), expand = c(0, 0)) +
       scale_colour_manual("cause:", values=c(palette_gen[c(5,15,10)],"grey70"))+
       scale_fill_manual("cause:", values=c(palette_gen[c(5,15,10)],"grey70"))
-    ggsave(paste0(dir_do, "cause_by_region.png"), units = "cm", dpi = "print", 
+    ggsave(paste0(dir_do, "cause_by_region.pdf"), units = "cm", dpi = "print", 
       height = 12, width = 20)
     
 
@@ -418,7 +423,7 @@ for (dd in 1:5) {
       stroke_size = 0.5, set_name_size = 4) + 
       theme_void() +
       theme(plot.background = element_rect(fill = "white", colour = NA))
-    ggsave(paste0(dir_do, "venn_all_causes.png"), units = "cm", dpi = "print", 
+    ggsave(paste0(dir_do, "venn_all_causes.pdf"), units = "cm", dpi = "print", 
       height = 12, width = 20)
 
     # Plot intentional injury deaths
@@ -427,7 +432,7 @@ for (dd in 1:5) {
       stroke_size = 0.5, set_name_size = 4) + 
       theme_void() +
       theme(plot.background = element_rect(fill = "white", colour = NA))
-    ggsave(paste0(dir_do, "venn_intl_injury.png"), units = "cm", dpi = "print", 
+    ggsave(paste0(dir_do, "venn_intl_injury.pdf"), units = "cm", dpi = "print", 
       height = 12, width = 20)
     
     # Combined plot
@@ -437,7 +442,7 @@ for (dd in 1:5) {
       font.label = list(face = "plain"), heights = c(1, 50)) +
       theme_void() +
       theme(plot.background = element_rect(fill = "white", colour = NA))
-    ggsave(paste0(dir_do, "venn_combi.png"), units = "cm", dpi = "print", 
+    ggsave(paste0(dir_do, "venn_combi.pdf"), units = "cm", dpi = "print", 
       height = 15, width = 22)
     
 }
